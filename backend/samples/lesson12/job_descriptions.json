@@ -1,0 +1,18 @@
+[
+  {
+    "job_code": "JD-AI-001",
+    "tenant_id": "course-demo",
+    "name": "高级 AI 应用工程师",
+    "content": "负责企业知识库、Agent 应用与评测体系建设",
+    "version": 2,
+    "status": "active"
+  },
+  {
+    "job_code": "JD-JAVA-001",
+    "tenant_id": "course-demo",
+    "name": "Java 后端工程师",
+    "content": "负责核心业务服务、接口与数据库设计",
+    "version": 1,
+    "status": "active"
+  }
+]
