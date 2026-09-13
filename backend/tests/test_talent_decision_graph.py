@@ -11,10 +11,18 @@ from app.talent_decision_graph import (
     build_reducer_demo,
     build_talent_decision_graph,
 )
+from scripts.verify_talent_decision_graph import _fixture_candidate_provider
 
 
 def _context() -> DecisionContext:
     return DecisionContext(tenant_id="course-demo", permission_scopes=("hr_private",))
+
+
+def test_fixture_provider_returns_candidates_only_for_ai_request():
+    context = _context()
+
+    assert _fixture_candidate_provider({"original_text": "筛选 AI 工程师"}, context) == ["C001", "C004"]
+    assert _fixture_candidate_provider({"original_text": "筛选 Java 工程师"}, context) == []
 
 
 def test_normal_request_reaches_completed_report():
@@ -39,7 +47,7 @@ def test_empty_candidate_set_uses_explicit_terminal_branch():
     graph = build_talent_decision_graph(candidate_provider=lambda request, context: [])
 
     result = graph.invoke(
-        {"messages": [], "request_text": "筛选火星基地架构师"},
+        {"messages": [], "request_text": "筛选 Java 工程师"},
         context=_context(),
     )
 

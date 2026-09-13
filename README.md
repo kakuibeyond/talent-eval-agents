@@ -235,7 +235,7 @@ cd backend
 uv run --no-sync pytest -q tests/test_talent_decision_graph.py
 ```
 
-结果输出为 `5 passed in 0.16s`
+结果输出为 `6 passed in 0.16s`
 
 ## Chunk 模块
 

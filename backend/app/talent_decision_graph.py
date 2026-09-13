@@ -93,12 +93,12 @@ def _prepare_request(state: TalentDecisionState) -> dict:
     }
 
 
-def _candidate_node(provider: CandidateProvider):
+def _candidate_node(candidate_provider: CandidateProvider):
     def retrieve_candidates(
         state: TalentDecisionState,
         runtime: Runtime[DecisionContext],
     ) -> dict:
-        candidate_ids = provider(state["request"], runtime.context)
+        candidate_ids = candidate_provider(state["request"], runtime.context)
         return {"candidate_ids": candidate_ids, "status": "candidates_ready"}
 
     return retrieve_candidates

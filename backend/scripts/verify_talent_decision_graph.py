@@ -13,10 +13,10 @@ from app.talent_decision_graph import (
 )
 
 
-def _provider(request, context):
-    if "火星" in request["original_text"]:
-        return []
-    return ["C001", "C004"]
+def _fixture_candidate_provider(request, context):
+    if "ai" in request["original_text"].casefold():
+        return ["C001", "C004"]
+    return []
 
 
 def _json(value) -> str:
@@ -25,7 +25,7 @@ def _json(value) -> str:
 
 def main() -> None:
     context = DecisionContext(tenant_id="course-demo", permission_scopes=("hr_private",))
-    graph = build_talent_decision_graph(_provider)
+    graph = build_talent_decision_graph(_fixture_candidate_provider)
     mermaid = graph.get_graph().draw_mermaid()
     print(f"[graph mermaid]\n{mermaid}")
     print("[normal] updates")
@@ -40,7 +40,7 @@ def main() -> None:
         print(_json(update))
 
     empty_result = graph.invoke(
-        {"messages": [], "request_text": "筛选火星基地架构师"},
+        {"messages": [], "request_text": "筛选 Java 工程师"},
         context=context,
     )
     print("\n\n[empty]\n", _json(empty_result))
