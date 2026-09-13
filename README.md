@@ -211,6 +211,32 @@ C005  C005_郭思远_项目复盘  chunk=markdown  index=succeeded
 
 模型抽取结果具有不确定性。同一材料的另一轮请求返回 `partial`，并把缺失项目时间记录为 `period`。演示和评测需要保留每次运行输出，不能把一次输出写成固定结果
 
+## 第 11 课 LangGraph 状态模型与人才决策主图
+
+| 路径 | 用途 |
+|---|---|
+| `backend/app/talent_decision_graph.py` | 定义人才决策输入、内部 State、输出、Runtime Context、节点、路由和可运行主图 |
+| `backend/tests/test_talent_decision_graph.py` | 验证正常完成、空候选结束、可信 Context 和并行 Reducer 行为 |
+| `backend/scripts/verify_talent_decision_graph.py` | 输出逐节点 State 增量、空候选结果和 Reducer 前后对照 |
+
+`TalentDecisionState` 将消息、人才要求、候选人范围、证据引用、评估结果、报告和运行状态分开保存。租户与权限通过只读 `DecisionContext` 注入，不接受用户消息或模型输出提供的同名值。主图当前使用注入式候选人 Provider 和占位评估结果，后续课程在保持 State Contract 的前提下接入真实工具、任务理解、并行评估和人机协同
+
+运行本节独立验证：
+
+```bash
+cd backend
+uv run --no-sync python -m scripts.verify_talent_decision_graph
+```
+
+运行本节测试：
+
+```bash
+cd backend
+uv run --no-sync pytest -q tests/test_talent_decision_graph.py
+```
+
+结果输出为 `5 passed in 0.16s`
+
 ## Chunk 模块
 
 | 路径 | 用途 |
