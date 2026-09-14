@@ -10,6 +10,7 @@
 | `database/init.sql` | PostgreSQL 完整建表 SQL |
 | `database/migrations/005_chunking.sql` | 第 4 课到第 5 课的唯一幂等增量迁移 |
 | `database/migrations/007_milvus_evidence_index.sql` | 第 6 课 Milvus 索引任务表的幂等增量迁移 |
+| `database/migrations/012_talent_tools.sql` | 第 12 课岗位 JD 与人才工具调用审计表的幂等增量迁移 |
 | `frontend/` | React 前端 |
 | `docker-compose.yml` | 默认启动 PostgreSQL、MinIO、Redis；`app` profile 启动 backend、worker、frontend |
 
@@ -210,6 +211,72 @@ C005  C005_郭思远_项目复盘  chunk=markdown  index=succeeded
 - 使用 `company_internal` 权限读取同一 `hr_private` 引用返回 `404`
 
 模型抽取结果具有不确定性。同一材料的另一轮请求返回 `partial`，并把缺失项目时间记录为 `period`。演示和评测需要保留每次运行输出，不能把一次输出写成固定结果
+
+## 第 11 课 LangGraph 状态模型与人才决策主图
+
+| 路径 | 用途 |
+|---|---|
+| `backend/app/talent_decision_graph.py` | 定义人才决策输入、内部 State、输出、Runtime Context、节点、路由和可运行主图 |
+| `backend/tests/test_talent_decision_graph.py` | 验证正常完成、空候选结束、可信 Context 和并行 Reducer 行为 |
+| `backend/scripts/verify_talent_decision_graph.py` | 输出逐节点 State 增量、空候选结果和 Reducer 前后对照 |
+
+`TalentDecisionState` 将消息、人才要求、候选人范围、证据引用、评估结果、报告和运行状态分开保存。租户与权限通过只读 `DecisionContext` 注入，不接受用户消息或模型输出提供的同名值。主图当前使用注入式候选人 Provider 和占位评估结果，后续课程在保持 State Contract 的前提下接入真实工具、任务理解、并行评估和人机协同
+
+运行本节独立验证：
+
+```bash
+cd backend
+uv run --no-sync python -m scripts.verify_talent_decision_graph
+```
+
+运行本节测试：
+
+```bash
+cd backend
+uv run --no-sync pytest -q tests/test_talent_decision_graph.py
+```
+
+结果输出为 `6 passed in 0.16s`
+
+## 第 12 课人才数据工具与统一证据协议
+
+| 路径 | 用途 |
+|---|---|
+| `backend/app/talent_tools.py` | 四类只读人才工具、Runtime Context、统一返回协议、重试、熔断和审计执行器 |
+| `backend/tests/test_talent_tools.py` | 验证工具 Schema、租户隔离、Evidence Pack 版本、重试、熔断、审计与主图适配 |
+| `backend/scripts/verify_talent_tools.py` | 使用隔离 SQLite 数据输出四类工具与故障链路结果 |
+| `backend/samples/lesson12/job_descriptions.json` | 第 12 课合成岗位 JD 数据 |
+| `database/migrations/012_talent_tools.sql` | 新增 `job_descriptions` 与 `tool_call_audits` |
+
+工具清单为 `lookup_job_descriptions`、`filter_candidates`、`search_candidate_evidence` 和 `get_candidate_profiles`。模型可见 Schema 只包含业务参数，租户、权限、身份和 Run 编号通过 `ToolRuntime` 注入。结构化筛选复用第 8 课 Query Plan 与 SQL Builder，证据检索继续返回第 9 课 Candidate Evidence Pack `2.0`
+
+`ToolExecutor` 统一返回 `ok`、`data`、`error` 和 `meta`，仅对瞬时依赖错误与超时执行受控重试。`policy` 设置默认超时与重试参数，`tool_policies` 可以按工具名称覆盖。连续失败达到阈值后打开熔断器。`SqlAuditSink` 只保存参数键名与调用摘要，不保存查询原文、候选人信息或证据正文
+
+在代码仓库根目录启动 PostgreSQL 并执行第 12 课幂等迁移：
+
+```bash
+docker compose -p talent-eval-agents-course up -d postgres
+docker compose -p talent-eval-agents-course exec -T postgres \
+  psql -U talent -d talent_docs -v ON_ERROR_STOP=1 -f /dev/stdin \
+  < database/migrations/012_talent_tools.sql
+```
+
+迁移使用 `CREATE TABLE IF NOT EXISTS` 和 `CREATE INDEX IF NOT EXISTS`，可以重复执行。全新环境由 `database/init.sql` 直接创建最新结构
+
+运行本节独立验证：
+
+```bash
+cd backend
+uv run --no-sync python -m scripts.verify_talent_tools
+```
+
+运行本节与第 11 课主图测试：
+
+```bash
+uv run --no-sync pytest -q tests/test_talent_tools.py tests/test_talent_decision_graph.py
+```
+
+结果输出为 `23 passed in 0.65s`。后端完整回归结果为 `151 passed, 3 warnings in 4.85s`
 
 ## Chunk 模块
 

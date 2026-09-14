@@ -62,6 +62,37 @@ class EmployeeProfile(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
+class JobDescription(Base):
+    __tablename__ = "job_descriptions"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    job_code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    name: Mapped[str] = mapped_column(String(255), index=True)
+    content: Mapped[str] = mapped_column(Text)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(String(32), default="active")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ToolCallAudit(Base):
+    __tablename__ = "tool_call_audits"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    call_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    tool_name: Mapped[str] = mapped_column(String(128), index=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    actor_id: Mapped[str] = mapped_column(String(128))
+    run_id: Mapped[str] = mapped_column(String(128), index=True)
+    argument_keys: Mapped[list[str]] = mapped_column(JSON, default=list)
+    status: Mapped[str] = mapped_column(String(32))
+    attempts: Mapped[int] = mapped_column(Integer)
+    duration_ms: Mapped[float] = mapped_column(Float)
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class KnowledgeBase(Base):
     __tablename__ = "knowledge_bases"
 
