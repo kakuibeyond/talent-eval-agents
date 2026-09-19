@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from datetime import date
 import json
+from pathlib import Path
+import subprocess
+import sys
 
 import anyio
 import httpx2
@@ -22,6 +25,7 @@ from app.talent_mcp_server import (
     talent_context_from_token,
 )
 from app.talent_tools import TalentToolContext, TalentToolService, ToolExecutor
+from scripts.verify_talent_mcp import build_demo_service, verify_auth
 
 
 def _session_factory(tmp_path):
@@ -332,3 +336,78 @@ def test_streamable_http_token_claims_reach_business_service(tmp_path):
 
     assert result.is_error is False
     assert [item["candidate_id"] for item in result.structured_content["data"]] == ["C001"]
+
+
+def test_verify_auth_uses_valid_capability_discovery_for_true_audience(tmp_path):
+    service = build_demo_service(tmp_path / "verify-auth.db")
+
+    result = anyio.run(verify_auth, service)
+
+    assert result == {
+        "missing_token": 401,
+        "missing_scope": 403,
+        "wrong_audience": 401,
+        "true_audience": 200,
+    }
+
+
+def test_demo_http_server_exposes_tools_over_streamable_http(tmp_path):
+    from scripts.run_talent_mcp_http import build_demo_http_server
+
+    async def scenario():
+        server = build_demo_http_server(tmp_path / "talent-http.db")
+        transport = httpx2.ASGITransport(app=server.streamable_http_app(stateless_http=True))
+        async with server.session_manager.run():
+            async with httpx2.AsyncClient(
+                transport=transport,
+                base_url="http://127.0.0.1:18081/mcp",
+            ) as http_client:
+                async with Client(
+                    streamable_http_client(
+                        "http://127.0.0.1:18081/mcp",
+                        http_client=http_client,
+                    )
+                ) as client:
+                    return await client.list_tools()
+
+    result = anyio.run(scenario)
+
+    assert {tool.name for tool in result.tools} == {
+        "lookup_job_descriptions",
+        "filter_candidates",
+        "search_candidate_evidence",
+        "get_candidate_profiles",
+    }
+
+
+def test_demo_http_server_script_can_run_directly():
+    script = Path(__file__).resolve().parents[1] / "scripts" / "run_talent_mcp_http.py"
+
+    result = subprocess.run(
+        [sys.executable, str(script), "--help"],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "--host" in result.stdout
+    assert "--port" in result.stdout
+
+
+def test_demo_http_server_stops_cleanly_on_keyboard_interrupt(monkeypatch, capsys):
+    from scripts import run_talent_mcp_http
+
+    class StoppedServer:
+        def run(self, *args, **kwargs):
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(
+        run_talent_mcp_http,
+        "build_demo_http_server",
+        lambda database_path: StoppedServer(),
+    )
+
+    run_talent_mcp_http.main([])
+
+    assert "Talent MCP 已停止" in capsys.readouterr().out

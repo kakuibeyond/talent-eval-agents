@@ -11,9 +11,9 @@ import time
 
 import anyio
 import httpx2
-from langchain.mcp import MCPAdapter
 from langchain_core.messages import AIMessage
 from mcp import Client
+from mcp.client.streamable_http import streamable_http_client
 from mcp.server.auth.provider import AccessToken
 from mcp.server.auth.settings import AuthSettings
 from sqlalchemy import create_engine
@@ -145,7 +145,7 @@ async def verify_auth(service: TalentToolService) -> dict[str, int]:
                 token="true-audience",
                 client_id="talent-chat",
                 scopes=["talent:read"],
-                resource="https://auth.example.com/mcp",
+                resource=resource,
                 claims=common_claims,
             ),
         }
@@ -156,13 +156,20 @@ async def verify_auth(service: TalentToolService) -> dict[str, int]:
         context_provider=authenticated_talent_context,
         token_verifier=verifier,
         auth=AuthSettings(
-            issuer_url="https://auth.example.com",
-            resource_server_url=resource,
+            issuer_url="https://auth.example.com", # 谁签发 token
+            resource_server_url=resource, # token 发给谁，即 audience
             validate_token_resource=True,
             required_scopes=["talent:read"],
         ),
     )
     transport = httpx2.ASGITransport(app=server.streamable_http_app())
+    true_audience_status: int | None = None
+
+    async def capture_true_audience_response(response: httpx2.Response) -> None:
+        nonlocal true_audience_status
+        if response.request.headers.get("Mcp-Method") == "tools/list":
+            true_audience_status = int(response.status_code)
+
     async with server.session_manager.run():
         async with httpx2.AsyncClient(transport=transport, base_url=resource) as client:
             missing = await client.post(".", json={})
@@ -176,20 +183,31 @@ async def verify_auth(service: TalentToolService) -> dict[str, int]:
                 json={},
                 headers={"Authorization": "Bearer wrong-audience"},
             )
-            true_audience = await client.post(
-                ".",
-                json={},
-                headers={"Authorization": "Bearer true-audience"},
-            )
+        async with httpx2.AsyncClient(
+            transport=transport,
+            base_url=resource,
+            headers={"Authorization": "Bearer true-audience"},
+            event_hooks={"response": [capture_true_audience_response]},
+        ) as authenticated_client:
+            async with Client(
+                streamable_http_client(resource, http_client=authenticated_client)
+            ) as mcp_client:
+                await mcp_client.list_tools()
+
+    if true_audience_status is None:
+        raise RuntimeError("正确 audience 的 MCP 能力发现没有产生 HTTP 响应")
+
     return {
-        "missing_token": missing.status_code,
-        "missing_scope": missing_scope.status_code,
-        "wrong_audience": wrong_audience.status_code,
-        "true_audience": true_audience.status_code,
+        "missing_token": int(missing.status_code),
+        "missing_scope": int(missing_scope.status_code),
+        "wrong_audience": int(wrong_audience.status_code),
+        "true_audience": true_audience_status,
     }
 
 
 async def verify_langgraph(server) -> dict[str, object]:
+    from langchain.mcp import MCPAdapter
+
     port = free_port()
     url = f"http://127.0.0.1:{port}/mcp"
     uvicorn_server = uvicorn.Server(
