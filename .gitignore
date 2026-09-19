@@ -13,3 +13,6 @@ sample-data/
 output/
 
 dist/
+*.zip
+logs/
+backend/.langgraph_api/

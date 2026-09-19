@@ -1,0 +1,26 @@
+[
+  {
+    "job_code": "JD-AI-001",
+    "tenant_id": "course-demo",
+    "name": "高级 AI 应用工程师",
+    "content": "负责企业知识库、Agent 应用与评测体系建设。要求具备 RAG 项目落地经验，能够设计检索质量与回答质量评测方案。",
+    "version": 2,
+    "status": "active"
+  },
+  {
+    "job_code": "JD-AI-002",
+    "tenant_id": "course-demo",
+    "name": "AI 应用工程师（平台方向）",
+    "content": "负责模型服务、Agent 平台与可观测性建设。要求具备大模型应用工程经验，能够建设运行监控与故障定位能力。",
+    "version": 1,
+    "status": "active"
+  },
+  {
+    "job_code": "JD-JAVA-001",
+    "tenant_id": "other-demo",
+    "name": "Java 后端工程师",
+    "content": "负责核心业务服务、接口与数据库设计。要求具备高并发系统开发与性能优化经验。",
+    "version": 1,
+    "status": "active"
+  }
+]

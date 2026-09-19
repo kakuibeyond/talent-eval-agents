@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python 调试当前文件",
+            "name": "debug this",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/backend/.venv/bin/python",
@@ -35,6 +35,16 @@
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/backend"
             }
+        },
+        {
+            "name": "Attach LangGraph dev (5678)",
+            "type": "debugpy",
+            "request": "attach",
+            "connect": {
+                "host": "127.0.0.1",
+                "port": 5678
+            },
+            "justMyCode": false
         },
         {
             "name": "Pytest",

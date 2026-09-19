@@ -1,8 +1,7 @@
 {
-    "python-envs.defaultEnvManager": "ms-python.python:system",
-    "python.defaultInterpreterPath": "${workspaceFolder}/backend/.venv/bin/python",
-    "python.testing.pytestEnabled": true,
-    "python.testing.pytestArgs": [
-        "backend/tests"
-    ]
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestArgs": [
+    "backend"
+]
 }
