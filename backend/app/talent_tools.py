@@ -191,7 +191,13 @@ class TalentToolService:
         if not context.permission_scopes:
             raise PermissionError("缺少可用权限范围")
 
-    def lookup_job_descriptions(self, query: str, *, context: TalentToolContext, limit: int = 5) -> list[dict[str, Any]]:
+    def lookup_job_descriptions(
+        self,
+        query: str,
+        *,
+        context: TalentToolContext,
+        limit: int = 5,
+    ) -> list[dict[str, Any]]:
         self._check_context(context)
         normalized_query = "".join(query.lower().split())
         if not normalized_query:
@@ -206,13 +212,25 @@ class TalentToolService:
         matches = []
         for row in rows:
             normalized_name = "".join(row.name.lower().split())
-            score = 1.0 if normalized_query in normalized_name or normalized_name in normalized_query else round(
-                SequenceMatcher(None, normalized_query, normalized_name).ratio(), 4
-            )
+            if normalized_query == normalized_name:
+                match_type = "exact"
+                score = 1.0
+            elif normalized_query in normalized_name or normalized_name in normalized_query:
+                match_type = "contains"
+                score = 1.0
+            else:
+                match_type = "fuzzy"
+                score = round(SequenceMatcher(None, normalized_query, normalized_name).ratio(), 4)
             if score >= 0.3:
                 matches.append(
-                    {"job_code": row.job_code, "name": row.name, "match_score": score,
-                     "version": row.version, "content": row.content}
+                    {
+                        "job_code": row.job_code,
+                        "name": row.name,
+                        "match_score": score,
+                        "match_type": match_type,
+                        "version": row.version,
+                        "content": row.content,
+                    }
                 )
         return sorted(matches, key=lambda item: (-item["match_score"], item["job_code"]))[:limit]
 

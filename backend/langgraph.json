@@ -1,0 +1,8 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "talent_request": "./app/talent_request_graph.py:graph"
+  },
+  "env": "../.env",
+  "python_version": "3.12"
+}

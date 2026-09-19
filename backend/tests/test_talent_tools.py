@@ -102,7 +102,18 @@ def test_job_lookup_returns_tenant_scoped_ranked_matches(session_factory, contex
     assert result[0]["job_code"] == "JD-AI-001"
     assert result[0]["version"] == 2
     assert result[0]["match_score"] == 1.0
+    assert result[0]["match_type"] == "contains"
     assert all(item["content"] != "其他租户数据" for item in result)
+
+
+def test_job_lookup_marks_normalized_equal_name_as_exact(session_factory, context):
+    service = TalentToolService(session_factory=session_factory)
+
+    result = service.lookup_job_descriptions(" 高级ai应用工程师 ", context=context)
+
+    assert result[0]["job_code"] == "JD-AI-001"
+    assert result[0]["match_score"] == 1.0
+    assert result[0]["match_type"] == "exact"
 
 
 def test_job_resource_lookup_uses_job_code_and_tenant_boundary(session_factory, context):

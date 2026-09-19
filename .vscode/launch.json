@@ -37,6 +37,16 @@
             }
         },
         {
+            "name": "Attach LangGraph dev (5678)",
+            "type": "debugpy",
+            "request": "attach",
+            "connect": {
+                "host": "127.0.0.1",
+                "port": 5678
+            },
+            "justMyCode": false
+        },
+        {
             "name": "Pytest",
             "type": "debugpy",
             "request": "launch",

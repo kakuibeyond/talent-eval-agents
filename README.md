@@ -289,6 +289,7 @@ uv run --no-sync pytest -q tests/test_talent_tools.py tests/test_talent_decision
 | `backend/tests/test_talent_mcp_server.py` | 验证能力发现、结构化结果、Resource、Prompt、scope、audience 和租户隔离 |
 | `backend/tests/test_talent_mcp_client.py` | 验证 MCP 工具在 LangGraph ToolNode 中的异步执行 |
 | `backend/scripts/verify_talent_mcp.py` | 使用隔离 SQLite 数据启动 Streamable HTTP，验证协议、鉴权和 LangGraph 链路 |
+| `backend/scripts/run_talent_mcp_http.py` | 长驻启动无鉴权的本机 Streamable HTTP Demo Server，供 Inspector 和其他 Host 联调 |
 
 MCP 适配层直接复用第 12 课的 `TalentToolService` 和 `ToolExecutor`。`talent_tools.py` 只新增了按 `job_code` 读取单个岗位 JD 的方法，且 SQL 继续强制使用可信 `tenant_id`
 
@@ -315,6 +316,27 @@ CODE_STATS_ROOT=/Users/noora/projects \
 uv run --no-sync mcp dev samples/lesson13/codestats_mcp_v2.py
 ```
 
+启动可供外部 MCP Client 连接的人才能力 Demo Server：
+
+```bash
+cd backend
+uv run --no-sync python scripts/run_talent_mcp_http.py
+```
+
+默认 endpoint 为 `http://127.0.0.1:18081/mcp`。服务使用临时 SQLite、固定 `tenant-a` Context、`stateless_http=True` 和 `json_response=True`，退出后删除临时数据。该入口没有鉴权，只用于本机调试
+
+浏览器可视化测试：
+
+```bash
+npx @modelcontextprotocol/inspector
+```
+
+Inspector 中选择 `Streamable HTTP`，URL 填写 `http://127.0.0.1:18081/mcp`，Authentication 留空。命令行检查使用：
+
+```bash
+npx @modelcontextprotocol/inspector --cli http://127.0.0.1:18081/mcp --transport http --method tools/list
+```
+
 运行协议、鉴权与 LangGraph 独立验证：
 
 ```bash
@@ -326,7 +348,7 @@ uv run --no-sync python scripts/verify_talent_mcp.py
 
 ```text
 [protocol] {"protocol": "2026-07-28", "tools": ["lookup_job_descriptions", "filter_candidates", "search_candidate_evidence", "get_candidate_profiles"], "resource_templates": ["talent://jobs/{job_code}", "talent://candidates/{candidate_id}/profile"], "resource_job_code": "JD-AI-001", "prompt_role": "user"}
-[auth] {"missing_token": 401, "missing_scope": 403, "wrong_audience": 401}
+[auth] {"missing_token": 401, "missing_scope": 403, "wrong_audience": 401, "true_audience": 200}
 [langgraph] {"discovered_tools": ["lookup_job_descriptions", "filter_candidates", "search_candidate_evidence", "get_candidate_profiles"], "candidate_ids": ["C001"], "tool_status": "success"}
 ```
 
@@ -336,7 +358,71 @@ uv run --no-sync python scripts/verify_talent_mcp.py
 uv run --no-sync pytest -q tests/test_codestats_mcp_v2.py tests/test_talent_mcp_client.py tests/test_talent_mcp_server.py tests/test_talent_tools.py
 ```
 
-结果输出为 `33 passed in 1.76s`。后端完整回归结果为 `167 passed, 2 warnings in 9.19s`
+结果输出为 `38 passed in 2.05s`。后端完整回归结果为 `177 passed, 2 warnings in 6.69s`
+
+## 第 14 课人才任务理解、条件澄清与执行计划
+
+| 路径 | 用途 |
+|---|---|
+| `backend/app/talent_request_graph.py` | 区分详细要求与岗位名称，完成岗位路由、确认中断、恢复和执行计划编译 |
+| `backend/app/lesson14_demo_data.py` | 按 `job_code` 幂等写入课程演示岗位 |
+| `backend/app/talent_tools.py` | 岗位查询结果增加 `exact`、`contains`、`fuzzy` 匹配类型 |
+| `backend/langgraph.json` | 为本地 Agent Server 注册 `talent_request` 图 |
+| `backend/samples/lesson14/job_descriptions.json` | 2 条 `course-demo` 岗位与 1 条跨租户隔离岗位 |
+| `backend/scripts/seed_lesson14_jobs.py` | 将演示岗位导入项目 PostgreSQL |
+| `backend/scripts/verify_talent_request_graph.py` | 用固定解释器、岗位结果和 `InMemorySaver` 验证三条运行路径 |
+| `backend/tests/test_lesson14_demo_data.py` | 验证演示数据导入的插入、更新和幂等性 |
+| `backend/tests/test_talent_request_graph.py` | 验证详细要求直达、精确项直达、歧义岗位恢复和无匹配结果 |
+
+详细人才要求直接编译为 `TalentRequest` 与第 8 课的 `QueryPlan`。岗位名称先调用 `lookup_job_descriptions`，唯一 `exact` 项自动确认，只有 `contains` 或 `fuzzy` 候选时进入 `confirm_job`。中断载荷包含 `type`、问题、原始请求和岗位选项，恢复值使用 `{"action":"select","job_code":"..."}`
+
+岗位查询和 `interrupt()` 位于两个节点。恢复会从 `confirm_job` 开头重启，但不会再次执行已经完成的 `lookup_jobs`。租户与权限仍由 `DecisionContext` 注入，不进入模型生成的 `TalentRequest` 或 `QueryPlan`
+
+本节新增开发依赖 `langgraph-cli[inmem]>=0.4.31,<0.5` 和 `debugpy`。Agent Server 从 `backend/langgraph.json` 加载图，并在开发态管理 Checkpoint
+
+导入合成岗位数据：
+
+```bash
+cd backend
+uv run --no-sync python -m scripts.seed_lesson14_jobs
+```
+
+首次输出为 `{"inserted": 3, "updated": 0, "total": 3}`，重复运行输出为 `{"inserted": 0, "updated": 3, "total": 3}`
+
+启动本地 Studio 演示：
+
+```bash
+uv run langgraph dev --no-browser --no-reload --port 2024
+```
+
+服务健康检查返回 `{"ok":true}`，`/assistants/search` 返回 `graph_id=talent_request`。Studio 使用 Graph mode，Assistant Context 设置为 `tenant_id=course-demo` 和 `permission_scopes=["hr_private"]`
+
+断点调试 Agent Server：
+
+```bash
+uv run langgraph dev --no-browser --debug-port 5678 --wait-for-client --port 2024
+```
+
+在 VS Code 中选择 `Attach LangGraph dev (5678)`。`confirm_job` 的恢复值检查位于 `backend/app/talent_request_graph.py`，在 `interrupt()` 后一行设置断点可以检查 `selection` 的实际类型和值
+
+运行确定性验证：
+
+```bash
+uv run --no-sync python -m scripts.verify_talent_request_graph
+```
+
+歧义岗位路径先输出 `next=["confirm_job"]`，使用同一 `thread_id` 恢复后输出 `status=plan_ready`、`selected_job=JD-AI-002`、`next=[]` 和 `lookup_calls=1`
+
+运行本节定向测试：
+
+```bash
+uv run --no-sync pytest -q \
+  tests/test_lesson14_demo_data.py \
+  tests/test_talent_request_graph.py \
+  tests/test_talent_tools.py
+```
+
+结果输出为 `24 passed, 1 warning in 1.19s`。后端完整回归结果为 `174 passed, 2 warnings in 8.40s`
 
 ## Chunk 模块
 
@@ -498,7 +584,7 @@ uv run pytest tests -q
 
 当前回归结果以本次本地 `pytest` 结果为准
 
-结果输出：`167 passed, 2 warnings in 9.19s`
+结果输出：`177 passed, 2 warnings in 6.69s`
 
 ## 服务日志
 
