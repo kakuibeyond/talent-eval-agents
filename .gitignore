@@ -13,3 +13,5 @@ sample-data/
 output/
 
 dist/
+*.zip
+logs/

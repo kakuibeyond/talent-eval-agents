@@ -216,6 +216,25 @@ class TalentToolService:
                 )
         return sorted(matches, key=lambda item: (-item["match_score"], item["job_code"]))[:limit]
 
+    def get_job_description(self, job_code: str, *, context: TalentToolContext) -> dict[str, Any] | None:
+        self._check_context(context)
+        with self.session_factory() as db:
+            row = db.scalar(
+                select(JobDescription).where(
+                    JobDescription.job_code == job_code,
+                    JobDescription.tenant_id == context.tenant_id,
+                    JobDescription.status == "active",
+                )
+            )
+        if row is None:
+            return None
+        return {
+            "job_code": row.job_code,
+            "name": row.name,
+            "version": row.version,
+            "content": row.content,
+        }
+
     def filter_candidates(self, filters: list[FilterCondition], *, context: TalentToolContext) -> list[str]:
         self._check_context(context)
         plan = QueryPlan(task_type=TaskType.FIND_TALENT, filters=filters)

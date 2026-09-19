@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python 调试当前文件",
+            "name": "debug this",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/backend/.venv/bin/python",

@@ -278,6 +278,66 @@ uv run --no-sync pytest -q tests/test_talent_tools.py tests/test_talent_decision
 
 结果输出为 `23 passed in 0.65s`。后端完整回归结果为 `151 passed, 3 warnings in 4.85s`
 
+## 第 13 课 MCP 人才能力服务
+
+| 路径 | 用途 |
+|---|---|
+| `backend/app/talent_mcp_server.py` | 人才 MCP Server、4 个 Tools、3 类 Resources、评估 Prompt 与 Access Token Context 映射 |
+| `backend/app/talent_mcp_client.py` | 将 MCPAdapter 发现的 LangChain Tools 放入 LangGraph ToolNode |
+| `backend/samples/lesson13/codestats_mcp_v2.py` | FastMCP v1 示例的 SDK v2 迁移版，包含 Tool、Resource、目录边界与 STDIO 入口 |
+| `backend/tests/test_codestats_mcp_v2.py` | 验证 CodeStats Tool、Resource、`.venv` 排除和目录越界拦截 |
+| `backend/tests/test_talent_mcp_server.py` | 验证能力发现、结构化结果、Resource、Prompt、scope、audience 和租户隔离 |
+| `backend/tests/test_talent_mcp_client.py` | 验证 MCP 工具在 LangGraph ToolNode 中的异步执行 |
+| `backend/scripts/verify_talent_mcp.py` | 使用隔离 SQLite 数据启动 Streamable HTTP，验证协议、鉴权和 LangGraph 链路 |
+
+MCP 适配层直接复用第 12 课的 `TalentToolService` 和 `ToolExecutor`。`talent_tools.py` 只新增了按 `job_code` 读取单个岗位 JD 的方法，且 SQL 继续强制使用可信 `tenant_id`
+
+Server 能力清单：
+
+- Tools：`lookup_job_descriptions`、`filter_candidates`、`search_candidate_evidence`、`get_candidate_profiles`
+- Resource Templates：`talent://jobs/{job_code}`、`talent://candidates/{candidate_id}/profile`
+- 固定 Resource：`talent://policies/evaluation/current`
+- Prompt：`talent_assessment`
+
+Streamable HTTP 保护边界使用 MCP `AuthSettings` 与可注入 `TokenVerifier`。OAuth scope `talent:read` 决定客户端能否访问 MCP 服务，token claims 中的 `tenant_id` 和 `permission_scopes` 映射为 `TalentToolContext`。工具参数与 `clientInfo` 不参与可信身份判定
+
+本节新增直接依赖 `mcp[cli]>=2.2,<3`、`langchain[mcp]>=1.4,<2` 和 `langchain-core>=1.2,<2`。`MCPAdapter` 在当前 LangChain 版本中仍为 Beta API，升级后需运行本节回归测试
+
+SDK v1 的 `FastMCP` 在 SDK v2 中更名为 `MCPServer`，Tool 与 Resource 装饰器以及 `mcp dev` 的基本用法保持不变。`mcp dev` 会启动 Inspector v2，启动 URL 使用 `MCP_INSPECTOR_API_TOKEN`。Inspector 的 `6274` 端口是调试页面，不是业务 MCP endpoint
+
+接受 `mcpServers` JSON 的 Host 可以用 `command`、`args` 和 `env` 启动 STDIO Server。Codex 当前使用 `~/.codex/config.toml` 或项目内 `.codex/config.toml`，远程服务的 `url` 应指向实际 Streamable HTTP 地址，例如 `http://127.0.0.1:8000/mcp`
+
+启动 CodeStats 的可视化调试：
+
+```bash
+cd backend
+CODE_STATS_ROOT=/Users/noora/projects \
+uv run --no-sync mcp dev samples/lesson13/codestats_mcp_v2.py
+```
+
+运行协议、鉴权与 LangGraph 独立验证：
+
+```bash
+cd backend
+uv run --no-sync python scripts/verify_talent_mcp.py
+```
+
+核心输出：
+
+```text
+[protocol] {"protocol": "2026-07-28", "tools": ["lookup_job_descriptions", "filter_candidates", "search_candidate_evidence", "get_candidate_profiles"], "resource_templates": ["talent://jobs/{job_code}", "talent://candidates/{candidate_id}/profile"], "resource_job_code": "JD-AI-001", "prompt_role": "user"}
+[auth] {"missing_token": 401, "missing_scope": 403, "wrong_audience": 401}
+[langgraph] {"discovered_tools": ["lookup_job_descriptions", "filter_candidates", "search_candidate_evidence", "get_candidate_profiles"], "candidate_ids": ["C001"], "tool_status": "success"}
+```
+
+运行本节定向测试：
+
+```bash
+uv run --no-sync pytest -q tests/test_codestats_mcp_v2.py tests/test_talent_mcp_client.py tests/test_talent_mcp_server.py tests/test_talent_tools.py
+```
+
+结果输出为 `33 passed in 1.76s`。后端完整回归结果为 `167 passed, 2 warnings in 9.19s`
+
 ## Chunk 模块
 
 | 路径 | 用途 |
@@ -438,7 +498,7 @@ uv run pytest tests -q
 
 当前回归结果以本次本地 `pytest` 结果为准
 
-结果输出：`121 passed, 3 warnings`
+结果输出：`167 passed, 2 warnings in 9.19s`
 
 ## 服务日志
 
