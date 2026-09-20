@@ -176,6 +176,143 @@ main {
   width: 100%
 }
 
+.knowledgeBaseManager {
+  margin-bottom: 20px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: white
+}
+
+.managerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px
+}
+
+.managerHead h2 {
+  margin: 0 0 4px;
+  font-size: 16px
+}
+
+.managerHead p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px
+}
+
+.knowledgeBaseGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 10px
+}
+
+.knowledgeBaseCard {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbfcfb
+}
+
+.knowledgeBaseCard.active {
+  border-color: #77a893;
+  box-shadow: 0 0 0 2px #e2f1ea
+}
+
+.knowledgeBaseMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 13px;
+  border: 0;
+  color: #253a31;
+  background: transparent;
+  text-align: left
+}
+
+.knowledgeBaseMain > svg {
+  flex: 0 0 auto;
+  width: 20px;
+  color: var(--green)
+}
+
+.knowledgeBaseMain span,
+.knowledgeBaseMain b,
+.knowledgeBaseMain small {
+  display: block
+}
+
+.knowledgeBaseMain span {
+  min-width: 0
+}
+
+.knowledgeBaseMain small {
+  overflow: hidden;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap
+}
+
+.knowledgeBaseMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px
+}
+
+.knowledgeBaseMeta span {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #eef4f1
+}
+
+.iconDanger {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  border: 1px solid #e4b6b6;
+  border-radius: 7px;
+  color: #a14545;
+  background: white;
+  place-items: center
+}
+
+.iconDanger svg {
+  width: 14px
+}
+
+.iconDanger:disabled {
+  border-color: var(--line);
+  color: #aab4af;
+  background: #f4f6f5
+}
+
+.knowledgeBaseDialog {
+  max-width: 520px
+}
+
+.knowledgeBaseDialog textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  resize: vertical
+}
+
+.dialogHint {
+  margin: -8px 0 16px;
+  color: var(--muted);
+  font-size: 13px
+}
+
 .filterSelect {
   display: flex;
   align-items: center;

@@ -16,7 +16,7 @@
 
 ## 产品定位
 
-前端是多 Agent 人才评估与推荐系统的统一应用壳层，人才档案模块包含员工花名册和档案资料库。花名册维护结构化员工数据，提供新建员工和每页 10 人分页。档案资料库通过知识库下拉框切换文件集合，文件表按每页 10 条分页，上传后自动排入解析、切片和 Milvus 索引链路，同时支持批量删除材料与关联数据。文件详情展示原文件、解析结果、索引记录、切片预览与基础元数据。档案资料库页面内置证据召回测试，可输入查询并附带候选人、材料类型和权限范围过滤项，直接查看匹配 Chunk、相似度分数和来源材料
+前端是多 Agent 人才评估与推荐系统的统一应用壳层，人才档案模块包含员工花名册和档案资料库。花名册维护结构化员工数据，提供新建员工和每页 10 人分页。档案资料库支持新建知识库、切换知识库、查看文件数量和删除空知识库；非空知识库需要先删除或迁移材料。文件表按每页 10 条分页，上传后自动排入解析、切片和 Milvus 索引链路，同时支持批量删除材料与关联数据。文件详情展示原文件、解析结果、索引记录、切片预览与基础元数据。档案资料库页面内置证据召回测试，可输入查询并附带候选人、材料类型和权限范围过滤项，直接查看匹配 Chunk、相似度分数和来源材料
 
 ## 运行模式
 
@@ -97,6 +97,7 @@ docker compose -p talent-eval-agents-course --profile app up -d --build
 | `POST /api/employees` | 新建结构化员工档案 |
 | `GET /api/knowledge-bases` | 查询档案知识库及文件数量 |
 | `POST /api/knowledge-bases` | 创建档案知识库 |
+| `DELETE /api/knowledge-bases/{id}` | 删除空知识库；存在材料时返回 409，要求先删除或迁移材料 |
 | `GET /api/documents` | 查询知识库文件 |
 | `POST /api/documents` | 上传文件、关联员工与知识库，并自动创建解析任务 |
 | `DELETE /api/documents` | 批量删除文档，同时删除原文件、解析产物、切片和 Milvus 向量 |
@@ -423,6 +424,39 @@ uv run --no-sync pytest -q \
 ```
 
 结果输出为 `24 passed, 1 warning in 1.19s`。后端完整回归结果为 `174 passed, 2 warnings in 8.40s`
+
+## 第 15 课动态评估维度与 Subagent 分发
+
+| 路径 | 用途 |
+|---|---|
+| `backend/app/talent_evaluation_dispatch.py` | 定义动态评估维度协议、权重校验、Branch Agent 适配器、任务矩阵与并行分发图 |
+| `backend/scripts/verify_talent_evaluation_dispatch.py` | 装配真实模型、数据库候选人查询、混合检索、人才工具与 Branch Agent，验证独立分发子图 |
+| `backend/tests/test_talent_evaluation_dispatch.py` | 覆盖权重校验、候选人 × 维度分发、reducer 聚合、可信上下文、工具边界、任务上限与失败隔离 |
+
+本节接收第 14 课的 `TalentRequest` 与 `QueryPlan`。硬条件决定候选人范围，语义要求和评估偏好用于生成动态评估维度。每个维度包含定义、整数权重、证据要求、0/3/5 分锚点、检索提示和需求来源。Pydantic 负责字段结构约束，`validate_dimension_plan` 只检查权重合计是否为 100。
+
+候选人与评估维度组成笛卡尔积任务矩阵。LangGraph `Send` 将每个任务发送给独立评估分支，`branch_results` 使用 `operator.add` reducer 聚合结果。分支 Agent 只暴露 `search_candidate_evidence` 和 `get_candidate_profiles`。`retrieval_hints` 与 `evidence_requirements` 进入分支任务，指导 Agent 生成证据检索查询。输出只包含证据引用、缺失信息和执行状态。评分、冲突判断、排序与报告留给第 16 课。
+
+运行真实链路验证：
+
+```bash
+cd backend
+uv run --no-sync python -m scripts.verify_talent_evaluation_dispatch
+```
+
+运行前需要启动 PostgreSQL、Milvus、MinIO 和 etcd，并配置模型、Embedding 与 Rerank 服务。脚本直接查询真实候选人和证据索引，不创建固定候选人或固定分支结果。第 15 课暂不在 `langgraph.json` 注册独立图，完整主流程接入留到后续课程。
+
+运行本节与前置课程的定向测试：
+
+```bash
+uv run --no-sync pytest -q \
+  tests/test_talent_evaluation_dispatch.py \
+  tests/test_talent_tools.py \
+  tests/test_talent_decision_graph.py \
+  tests/test_talent_request_graph.py
+```
+
+当前结果为 `39 passed, 1 warning in 1.41s`，后端完整回归为 `187 passed, 2 warnings in 9.40s`。真实链路脚本已完成语法验证；本次执行因本机 Docker 未启动，Milvus `127.0.0.1:19531` 不可连接，未生成模型与检索结果。
 
 ## Chunk 模块
 
