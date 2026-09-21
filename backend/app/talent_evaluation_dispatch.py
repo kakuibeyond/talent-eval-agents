@@ -2,19 +2,22 @@ from __future__ import annotations
 
 import operator
 import json
+import logging
 from collections.abc import Callable
 from typing import Annotated, Any, Literal
 
-from langchain.agents import create_agent
 from langgraph.graph import END, START, StateGraph
 from langgraph.runtime import Runtime
 from langgraph.types import Send
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from typing_extensions import TypedDict
 
+from app.evidence_pack import build_evidence_packs
 from app.query_plan import FilterCondition
 from app.talent_decision_graph import DecisionContext
-from app.talent_tools import TalentToolContext
+from app.talent_tools import TalentToolContext, ToolExecutor
+
+logger = logging.getLogger(__name__)
 
 
 class ScoreAnchor(BaseModel):
@@ -49,23 +52,54 @@ class AssessmentWorkItem(BaseModel):
     dimension: EvaluationDimension
 
 
+class EvidenceSourceRef(BaseModel):
+    citation_id: str
+    chunk_id: str
+    quote: str = Field(min_length=1)
+    quote_start: int = Field(ge=0)
+    quote_end: int = Field(gt=0)
+    source_label: str = Field(min_length=1)
+
+
+class BranchEvidenceFact(BaseModel):
+    event: str
+    period: str
+    claim: str
+    answer: Literal["yes", "no"]
+    sources: list[EvidenceSourceRef] = Field(default_factory=list)
+
+
+class EvidenceCitationRef(BaseModel):
+    citation_id: str
+    chunk_id: str
+    source_label: str = Field(min_length=1)
+
+
+class RequirementEvidence(BaseModel):
+    requirement_id: str
+    query: str
+    status: Literal["sufficient", "partial", "missing", "conflicting"]
+    reason: str
+    extraction_status: Literal["not_run", "succeeded", "failed"]
+    facts: list[BranchEvidenceFact] = Field(default_factory=list)
+    conflicts: list[list[int]] = Field(default_factory=list)
+    missing_information: list[str] = Field(default_factory=list)
+    citations: list[EvidenceCitationRef] = Field(default_factory=list)
+
+
 class BranchEvidenceDraft(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     task_id: str
     candidate_id: str
     dimension_id: str
-    status: Literal["succeeded", "degraded", "failed"]
-    evidence_refs: list[str] = Field(default_factory=list)
-    missing_items: list[str] = Field(default_factory=list)
+    execution_status: Literal["succeeded", "degraded", "failed"] = Field(
+        validation_alias=AliasChoices("execution_status", "status")
+    )
+    requirements: list[RequirementEvidence] = Field(default_factory=list)
     tool_call_ids: list[str] = Field(default_factory=list)
     error_code: str | None = None
     error_message: str | None = None
-
-
-class BranchAgentFinding(BaseModel):
-    status: Literal["succeeded", "degraded"]
-    evidence_refs: list[str] = Field(default_factory=list)
-    missing_items: list[str] = Field(default_factory=list)
-    tool_call_ids: list[str] = Field(default_factory=list)
 
 
 class TalentEvaluationDispatchState(TypedDict, total=False):
@@ -89,6 +123,8 @@ DimensionGenerator = Callable[
 CandidateProvider = Callable[[dict[str, Any], DecisionContext], list[str]]
 BranchWorker = Callable[[AssessmentWorkItem, DecisionContext], BranchEvidenceDraft]
 ModelProvider = Callable[[], Any]
+EvidenceSearch = Callable[..., list[Any]]
+EvidenceSourceLoader = Callable[..., list[dict[str, Any]]]
 
 
 DIMENSION_GENERATOR_PROMPT = """你负责把已编译的人才要求转成可取证的动态评估维度。
@@ -100,20 +136,95 @@ hard_conditions 已用于候选人过滤，不得再生成评分维度。
 retrieval_hints 应给出可直接用于候选人证据检索的关键词组合。
 """.strip()
 
-BRANCH_AGENT_PROMPT = """你是候选人单维度证据分析 Agent。
-每次只处理输入中的一名候选人和一个评估维度。
-先读取候选人基础档案，再将 retrieval_hints 与 evidence_requirements 组合成检索查询，逐项调用证据检索工具。
-只能返回工具结果中存在的 chunk_id 或 citation_id，不得生成新的证据标识。
-evidence_refs 保存与该维度相关的可观察事实，包括支持事实和明确冲突事实。
-没有检索到足够材料的要求写入 missing_items，不得把证据缺失解释成负面事实。工具降级但仍能返回部分结果时使用 degraded。
-本节不计算分数、置信度、排名或最终结论。
-""".strip()
-
-
 class BranchExecutionError(RuntimeError):
     def __init__(self, code: str, message: str):
         super().__init__(message)
         self.code = code
+
+
+def build_branch_evidence_provider(
+    *,
+    search: EvidenceSearch,
+    load_sources: EvidenceSourceLoader,
+    extract: Callable[[dict[str, Any], list[dict[str, Any]]], Any],
+):
+    """Return authorized chunks together with Candidate Evidence Pack 2.0."""
+
+    def evidence_provider(
+        *,
+        query: str,
+        candidate_ids: list[str],
+        tenant_id: str,
+        permission_scopes: list[str],
+        include_evidence_pack: bool,
+    ) -> dict[str, Any]:
+        logger.info(
+            "event=evidence_provider_started function=evidence_provider "
+            "candidate_ids=%s query_chars=%s permission_scope_count=%s "
+            "include_evidence_pack=%s",
+            candidate_ids, len(query), len(permission_scopes), include_evidence_pack,
+        )
+        ranked = search(
+            query=query,
+            candidate_ids=candidate_ids,
+            tenant_id=tenant_id,
+            permission_scopes=permission_scopes,
+        )
+        logger.info(
+            "event=evidence_search_completed function=evidence_provider "
+            "candidate_ids=%s hit_count=%s chunk_ids=%s",
+            candidate_ids, len(ranked), [item.chunk_id for item in ranked],
+        )
+        hits = [
+            {
+                "chunk_id": item.chunk_id,
+                "candidate_id": item.candidate_id,
+                "content": item.content,
+                "score": item.rerank_score,
+                "metadata": item.metadata,
+                "requirement_ids": ["branch_requirement"],
+            }
+            for item in ranked
+        ]
+        trusted_sources = load_sources(
+            hits,
+            tenant_id=tenant_id,
+            permission_scopes=permission_scopes,
+        )
+        logger.info(
+            "event=evidence_sources_loaded function=evidence_provider "
+            "candidate_ids=%s requested_chunk_count=%s trusted_source_count=%s "
+            "trusted_chunk_ids=%s",
+            candidate_ids, len(hits), len(trusted_sources),
+            [item["chunk_id"] for item in trusted_sources],
+        )
+        evidence_packs = (
+            build_evidence_packs(
+                candidate_ids=candidate_ids,
+                requirements=[
+                    {
+                        "requirement_id": "branch_requirement",
+                        "query": query,
+                    }
+                ],
+                sources=trusted_sources,
+                extract=extract,
+            )
+            if include_evidence_pack
+            else []
+        )
+        logger.info(
+            "event=evidence_provider_completed function=evidence_provider "
+            "candidate_ids=%s trusted_source_count=%s evidence_pack_count=%s",
+            candidate_ids, len(trusted_sources), len(evidence_packs),
+        )
+        return {
+            "candidate_ids": candidate_ids,
+            "chunks": trusted_sources,
+            "evidence_packs": evidence_packs,
+        }
+
+    return evidence_provider
 
 
 def build_structured_dimension_generator(
@@ -123,6 +234,14 @@ def build_structured_dimension_generator(
         talent_request: dict[str, Any],
         query_plan: dict[str, Any],
     ) -> EvaluationDimensionPlan:
+        logger.info(
+            "event=dimension_generation_started "
+            "function=build_structured_dimension_generator.generate "
+            "semantic_condition_count=%s preference_count=%s filter_count=%s",
+            len(talent_request.get("semantic_conditions", [])),
+            len(talent_request.get("evaluation_preferences", [])),
+            len(query_plan.get("filters", [])),
+        )
         model = model_provider()
         if model is None:
             raise RuntimeError("评估维度生成模型未配置")
@@ -130,68 +249,218 @@ def build_structured_dimension_generator(
             "talent_request": talent_request,
             "query_plan": query_plan,
         }
-        return model.with_structured_output(EvaluationDimensionPlan).invoke(
+        result = model.with_structured_output(EvaluationDimensionPlan).invoke(
             [
                 ("system", DIMENSION_GENERATOR_PROMPT),
                 ("user", json.dumps(payload, ensure_ascii=False)),
             ]
         )
+        logger.info(
+            "event=dimension_generation_completed "
+            "function=build_structured_dimension_generator.generate "
+            "dimension_count=%s dimension_ids=%s weight_total=%s",
+            len(result.dimensions),
+            [item.dimension_id for item in result.dimensions],
+            sum(item.weight_percent for item in result.dimensions),
+        )
+        return result
 
     return generate
 
 
-def build_evaluation_branch_agent(model: Any, tools: list[Any]):
-    allowed_names = {"search_candidate_evidence", "get_candidate_profiles"}
-    branch_tools = [tool for tool in tools if tool.name in allowed_names]
-    return create_agent(
-        model=model,
-        tools=branch_tools,
-        system_prompt=BRANCH_AGENT_PROMPT,
-        response_format=BranchAgentFinding,
-        context_schema=TalentToolContext,
-        name="dimension_evidence_agent",
+def _branch_query(dimension: EvaluationDimension, requirement: str) -> str:
+    terms = list(dict.fromkeys([*dimension.retrieval_hints, requirement]))
+    return " ".join(terms)[:500]
+
+
+def _citation_refs(raw_citations: list[Any]) -> list[dict[str, str]]:
+    refs: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for raw in raw_citations:
+        if not isinstance(raw, dict):
+            continue
+        chunk_id = raw.get("chunk_id")
+        citation_id = raw.get("citation_id") or chunk_id
+        if not isinstance(chunk_id, str) or not chunk_id or chunk_id in seen:
+            continue
+        seen.add(chunk_id)
+        refs.append(
+            {
+                "citation_id": str(citation_id),
+                "chunk_id": chunk_id,
+                "source_label": str(
+                    raw.get("document_title")
+                    or raw.get("source_label")
+                    or chunk_id
+                ),
+            }
+        )
+    return refs
+
+
+def _missing_requirement(
+    *,
+    requirement_id: str,
+    query: str,
+    requirement: str,
+    reason: str,
+) -> RequirementEvidence:
+    return RequirementEvidence(
+        requirement_id=requirement_id,
+        query=query,
+        status="missing",
+        reason=reason,
+        extraction_status="not_run",
+        missing_information=[requirement],
     )
 
 
-def build_agent_branch_worker(agent: Any) -> BranchWorker:
+def build_evidence_branch_worker(service: Any, executor: ToolExecutor) -> BranchWorker:
+    """Prepare evaluation-ready evidence without an additional ReAct loop."""
+
     def branch_worker(
         work_item: AssessmentWorkItem,
         context: DecisionContext,
     ) -> BranchEvidenceDraft:
-        task_payload = {
-            "candidate_id": work_item.candidate_id,
-            "dimension": work_item.dimension.model_dump(mode="json"),
-        }
-        result = agent.invoke(
-            {
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": json.dumps(task_payload, ensure_ascii=False),
-                    }
-                ]
-            },
-            {"recursion_limit": 8},
-            context=TalentToolContext(
-                tenant_id=context.tenant_id,
-                permission_scopes=tuple(context.permission_scopes),
-                actor_id="evaluation-subagent",
-                run_id=work_item.task_id,
-            ),
+        logger.info(
+            "event=branch_worker_started function=branch_worker task_id=%s "
+            "candidate_id=%s dimension_id=%s requirement_count=%s",
+            work_item.task_id, work_item.candidate_id,
+            work_item.dimension.dimension_id,
+            len(work_item.dimension.evidence_requirements),
         )
-        structured_response = result.get("structured_response")
-        if structured_response is None:
-            raise BranchExecutionError(
-                "structured_output_missing",
-                "评估分支未返回结构化结果",
+        tool_context = TalentToolContext(
+            tenant_id=context.tenant_id,
+            permission_scopes=tuple(context.permission_scopes),
+            actor_id="evaluation-branch-worker",
+            run_id=work_item.task_id,
+        )
+        requirement_results: list[RequirementEvidence] = []
+        call_ids: list[str] = []
+        degraded = False
+        for index, requirement in enumerate(
+            work_item.dimension.evidence_requirements,
+            start=1,
+        ):
+            requirement_id = f"{work_item.dimension.dimension_id}:{index}"
+            query = _branch_query(work_item.dimension, requirement)
+            logger.info(
+                "event=branch_requirement_started function=branch_worker "
+                "task_id=%s candidate_id=%s dimension_id=%s "
+                "requirement_id=%s query_chars=%s",
+                work_item.task_id, work_item.candidate_id,
+                work_item.dimension.dimension_id, requirement_id, len(query),
             )
-        finding = BranchAgentFinding.model_validate(structured_response)
-        return BranchEvidenceDraft(
+            envelope = executor.execute(
+                "search_candidate_evidence",
+                lambda query=query: service.search_candidate_evidence(
+                    query,
+                    [work_item.candidate_id],
+                    context=tool_context,
+                ),
+                context=tool_context,
+                arguments={
+                    "query": query,
+                    "candidate_ids": [work_item.candidate_id],
+                },
+            )
+            meta = envelope.get("meta") or {}
+            call_id = meta.get("call_id")
+            if isinstance(call_id, str) and call_id:
+                call_ids.append(call_id)
+            if not envelope.get("ok"):
+                degraded = True
+                error = envelope.get("error") or {}
+                logger.error(
+                    "event=branch_requirement_failed function=branch_worker "
+                    "task_id=%s candidate_id=%s dimension_id=%s "
+                    "requirement_id=%s call_id=%s error_code=%s degraded=%s",
+                    work_item.task_id, work_item.candidate_id,
+                    work_item.dimension.dimension_id, requirement_id, call_id,
+                    error.get("code") or "tool_failed", meta.get("degraded"),
+                )
+                requirement_results.append(
+                    _missing_requirement(
+                        requirement_id=requirement_id,
+                        query=query,
+                        requirement=requirement,
+                        reason=str(error.get("code") or "tool_failed"),
+                    )
+                )
+                continue
+
+            data = envelope.get("data") or {}
+            pack = next(
+                (
+                    item
+                    for item in data.get("evidence_packs", [])
+                    if item.get("candidate_id") == work_item.candidate_id
+                ),
+                None,
+            )
+            raw_requirement = (
+                pack.get("requirements", [None])[0]
+                if isinstance(pack, dict) and pack.get("requirements")
+                else None
+            )
+            if not isinstance(raw_requirement, dict):
+                degraded = True
+                logger.error(
+                    "event=branch_requirement_failed function=branch_worker "
+                    "task_id=%s candidate_id=%s dimension_id=%s "
+                    "requirement_id=%s call_id=%s error_code=evidence_pack_missing",
+                    work_item.task_id, work_item.candidate_id,
+                    work_item.dimension.dimension_id, requirement_id, call_id,
+                )
+                requirement_results.append(
+                    _missing_requirement(
+                        requirement_id=requirement_id,
+                        query=query,
+                        requirement=requirement,
+                        reason="evidence_pack_missing",
+                    )
+                )
+                continue
+            result = RequirementEvidence.model_validate(
+                {
+                    **raw_requirement,
+                    "requirement_id": requirement_id,
+                    "query": query,
+                    "citations": _citation_refs(
+                        raw_requirement.get("citations", [])
+                    ),
+                }
+            )
+            degraded = degraded or bool(meta.get("degraded"))
+            requirement_results.append(result)
+            logger.info(
+                "event=branch_requirement_completed function=branch_worker "
+                "task_id=%s candidate_id=%s dimension_id=%s "
+                "requirement_id=%s call_id=%s status=%s reason=%s "
+                "extraction_status=%s fact_count=%s citation_count=%s",
+                work_item.task_id, work_item.candidate_id,
+                work_item.dimension.dimension_id, requirement_id, call_id,
+                result.status, result.reason, result.extraction_status,
+                len(result.facts), len(result.citations),
+            )
+
+        branch_result = BranchEvidenceDraft(
             task_id=work_item.task_id,
             candidate_id=work_item.candidate_id,
             dimension_id=work_item.dimension.dimension_id,
-            **finding.model_dump(mode="json"),
+            execution_status="degraded" if degraded else "succeeded",
+            requirements=requirement_results,
+            tool_call_ids=call_ids,
         )
+        logger.info(
+            "event=branch_worker_completed function=branch_worker task_id=%s "
+            "candidate_id=%s dimension_id=%s execution_status=%s "
+            "requirement_count=%s tool_call_count=%s",
+            work_item.task_id, work_item.candidate_id,
+            work_item.dimension.dimension_id, branch_result.execution_status,
+            len(branch_result.requirements), len(branch_result.tool_call_ids),
+        )
+        return branch_result
 
     return branch_worker
 
@@ -236,6 +505,13 @@ def _receive_input(
     state: TalentEvaluationDispatchState,
     runtime: Runtime[DecisionContext],
 ) -> dict[str, Any]:
+    logger.info(
+        "event=graph_node_started function=_receive_input node=receive_input "
+        "tenant_id=%s permission_scope_count=%s has_talent_request=%s "
+        "has_query_plan=%s",
+        runtime.context.tenant_id, len(runtime.context.permission_scopes),
+        bool(state.get("talent_request")), bool(state.get("query_plan")),
+    )
     if not runtime.context.tenant_id.strip():
         raise ValueError("Runtime Context 中的 tenant_id 不能为空")
     if not runtime.context.permission_scopes:
@@ -263,6 +539,11 @@ def _generate_dimensions(dimension_generator: DimensionGenerator):
             state["talent_request"],
             state["query_plan"],
         )
+        logger.info(
+            "event=graph_node_completed function=generate_dimensions "
+            "node=generate_dimensions dimension_count=%s dimension_ids=%s",
+            len(plan.dimensions), [item.dimension_id for item in plan.dimensions],
+        )
         return {
             "dimensions": [item.model_dump(mode="json") for item in plan.dimensions],
             "status": "dimensions_generated",
@@ -274,6 +555,11 @@ def _generate_dimensions(dimension_generator: DimensionGenerator):
 def _validate_dimensions(state: TalentEvaluationDispatchState) -> dict[str, Any]:
     plan = EvaluationDimensionPlan(dimensions=state["dimensions"])
     issues = validate_dimension_plan(plan)
+    logger.info(
+        "event=graph_node_completed function=_validate_dimensions "
+        "node=validate_dimensions issue_count=%s weight_total=%s",
+        len(issues), sum(item.weight_percent for item in plan.dimensions),
+    )
     return {
         "validation_issues": [item.model_dump(mode="json") for item in issues],
         "status": "dimensions_valid" if not issues else "dimension_invalid",
@@ -294,6 +580,11 @@ def _retrieve_candidates(candidate_provider: CandidateProvider):
         runtime: Runtime[DecisionContext],
     ) -> dict[str, Any]:
         candidate_ids = candidate_provider(state["query_plan"], runtime.context)
+        logger.info(
+            "event=graph_node_completed function=retrieve_candidates "
+            "node=retrieve_candidates candidate_count=%s candidate_ids=%s",
+            len(candidate_ids), candidate_ids,
+        )
         return {
             "candidate_ids": candidate_ids,
             "status": "candidates_ready" if candidate_ids else "no_candidates",
@@ -309,6 +600,13 @@ def _prepare_work_items(max_work_items: int):
         ]
         required_work_items = len(state["candidate_ids"]) * len(dimensions)
         if required_work_items > max_work_items:
+            logger.error(
+                "event=graph_capacity_exceeded function=prepare_work_items "
+                "node=prepare_work_items candidate_count=%s dimension_count=%s "
+                "required_work_items=%s work_item_limit=%s",
+                len(state["candidate_ids"]), len(dimensions),
+                required_work_items, max_work_items,
+            )
             return {
                 "work_items": [],
                 "required_work_items": required_work_items,
@@ -324,6 +622,13 @@ def _prepare_work_items(max_work_items: int):
             for candidate_id in state["candidate_ids"]
             for dimension in dimensions
         ]
+        logger.info(
+            "event=graph_node_completed function=prepare_work_items "
+            "node=prepare_work_items candidate_count=%s dimension_count=%s "
+            "work_item_count=%s task_ids=%s",
+            len(state["candidate_ids"]), len(dimensions), len(work_items),
+            [item["task_id"] for item in work_items],
+        )
         return {
             "work_items": work_items,
             "required_work_items": required_work_items,
@@ -337,6 +642,11 @@ def _prepare_work_items(max_work_items: int):
 def build_work_item_sends(
     work_items: list[dict[str, Any]],
 ) -> list[Send]:
+    logger.info(
+        "event=work_items_dispatched function=build_work_item_sends "
+        "work_item_count=%s task_ids=%s",
+        len(work_items), [item["task_id"] for item in work_items],
+    )
     return [
         Send("run_assessment_branch", {"work_item": item})
         for item in work_items
@@ -357,26 +667,61 @@ def _run_assessment_branch(branch_worker: BranchWorker):
         runtime: Runtime[DecisionContext],
     ) -> dict[str, Any]:
         work_item = AssessmentWorkItem.model_validate(state["work_item"])
+        logger.info(
+            "event=graph_branch_started function=run_assessment_branch "
+            "node=run_assessment_branch task_id=%s candidate_id=%s dimension_id=%s",
+            work_item.task_id, work_item.candidate_id,
+            work_item.dimension.dimension_id,
+        )
         try:
             result = branch_worker(work_item, runtime.context)
         except TimeoutError as exc:
+            logger.error(
+                "event=graph_branch_failed function=run_assessment_branch "
+                "node=run_assessment_branch task_id=%s candidate_id=%s "
+                "dimension_id=%s error_code=branch_timeout error_type=%s",
+                work_item.task_id, work_item.candidate_id,
+                work_item.dimension.dimension_id, type(exc).__name__,
+            )
             result = BranchEvidenceDraft(
                 task_id=work_item.task_id,
                 candidate_id=work_item.candidate_id,
                 dimension_id=work_item.dimension.dimension_id,
-                status="failed",
+                execution_status="failed",
                 error_code="branch_timeout",
                 error_message=str(exc),
             )
         except BranchExecutionError as exc:
+            logger.error(
+                "event=graph_branch_failed function=run_assessment_branch "
+                "node=run_assessment_branch task_id=%s candidate_id=%s "
+                "dimension_id=%s error_code=%s error_type=%s",
+                work_item.task_id, work_item.candidate_id,
+                work_item.dimension.dimension_id, exc.code, type(exc).__name__,
+            )
             result = BranchEvidenceDraft(
                 task_id=work_item.task_id,
                 candidate_id=work_item.candidate_id,
                 dimension_id=work_item.dimension.dimension_id,
-                status="failed",
+                execution_status="failed",
                 error_code=exc.code,
                 error_message=str(exc),
             )
+        except Exception as exc:
+            logger.exception(
+                "event=graph_branch_crashed function=run_assessment_branch "
+                "node=run_assessment_branch task_id=%s candidate_id=%s "
+                "dimension_id=%s error_type=%s",
+                work_item.task_id, work_item.candidate_id,
+                work_item.dimension.dimension_id, type(exc).__name__,
+            )
+            raise
+        logger.info(
+            "event=graph_branch_completed function=run_assessment_branch "
+            "node=run_assessment_branch task_id=%s execution_status=%s "
+            "requirement_count=%s",
+            work_item.task_id, result.execution_status, len(result.requirements),
+        )
         return {"branch_results": [result.model_dump(mode="json")]}
 
     return run_assessment_branch
@@ -384,11 +729,20 @@ def _run_assessment_branch(branch_worker: BranchWorker):
 
 def _finalize(state: TalentEvaluationDispatchState) -> dict[str, Any]:
     has_failures = any(
-        item["status"] == "failed" for item in state.get("branch_results", [])
+        item["execution_status"] == "failed"
+        for item in state.get("branch_results", [])
     )
-    return {
-        "status": "branches_ready_with_failures" if has_failures else "branches_ready"
-    }
+    status = "branches_ready_with_failures" if has_failures else "branches_ready"
+    status_counts: dict[str, int] = {}
+    for item in state.get("branch_results", []):
+        execution_status = item["execution_status"]
+        status_counts[execution_status] = status_counts.get(execution_status, 0) + 1
+    logger.info(
+        "event=graph_node_completed function=_finalize node=finalize "
+        "status=%s branch_count=%s status_counts=%s",
+        status, len(state.get("branch_results", [])), status_counts,
+    )
+    return {"status": status}
 
 
 def _dimension_invalid(state: TalentEvaluationDispatchState) -> dict[str, Any]:

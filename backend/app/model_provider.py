@@ -25,7 +25,15 @@ def get_embedding_model(settings: Settings | None = None) -> DashScopeEmbeddings
 
 if __name__ == "__main__":
     model = get_chat_model()
-    res = model.invoke(
-            [("user", "你是谁？")]
-        )
+    # res = model.invoke(
+    #         [("user", "你是谁？")]
+    #     )
+    from app.talent_evaluation_dispatch import EvaluationDimensionPlan, DIMENSION_GENERATOR_PROMPT
+
+    res = model.with_structured_output(EvaluationDimensionPlan).invoke(
+                [
+                    ("system", DIMENSION_GENERATOR_PROMPT),
+                    ("user", "你好"),
+                ]
+            )
     print(res)

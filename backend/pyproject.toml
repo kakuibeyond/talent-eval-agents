@@ -45,6 +45,9 @@ dev = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+    "live_model: calls the configured external chat model and is skipped by default",
+]
 
 [[tool.uv.index]]
 url = "https://mirrors.aliyun.com/pypi/simple/"

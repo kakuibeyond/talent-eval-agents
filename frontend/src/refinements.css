@@ -6,6 +6,8 @@
   width: 226px;
   padding: 20px 13px;
   background: #10271f;
+  display: flex;
+  flex-direction: column;
   transition: width .2s ease, padding .2s ease
 }
 
@@ -28,9 +30,10 @@ main {
 }
 
 .sideToggle {
-  position: absolute;
-  top: 18px;
-  right: 12px;
+  position: relative;
+  z-index: 2;
+  margin-top: auto;
+  align-self: flex-end;
   width: 28px;
   height: 28px;
   display: grid;
@@ -38,7 +41,8 @@ main {
   border: 1px solid #365247;
   border-radius: 999px;
   color: #d8e5df;
-  background: #17362c
+  background: #17362c;
+  cursor: pointer
 }
 
 .sideToggle svg {
@@ -103,7 +107,8 @@ main {
 }
 
 .env {
-  display: block
+  position: static;
+  margin-top: 18px
 }
 
 .env div {
@@ -141,6 +146,10 @@ main {
   justify-content: center;
   gap: 0;
   padding-inline: 0
+}
+
+.app.sidebarCollapsed .sideToggle {
+  align-self: center
 }
 
 .libraryHead {

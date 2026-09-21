@@ -722,15 +722,6 @@ function App() {
   return (
     <div className={`app${sidebarCollapsed ? " sidebarCollapsed" : ""}`}>
       <aside className="side">
-        <button
-          type="button"
-          className="sideToggle"
-          onClick={() => setSidebarCollapsed((value) => !value)}
-          aria-label={sidebarCollapsed ? "展开导航栏" : "收起导航栏"}
-          aria-expanded={!sidebarCollapsed}
-        >
-          {sidebarCollapsed ? <ChevronRight /> : <ChevronLeft />}
-        </button>
         <div className="brand">
           <img src="/talentos-favicon.png" alt="TalentOS" />
           <div>
@@ -763,6 +754,15 @@ function App() {
           </div>
           <small>服务正常 · V1.0</small>
         </div>
+        <button
+          type="button"
+          className="sideToggle"
+          onClick={() => setSidebarCollapsed((value) => !value)}
+          aria-label={sidebarCollapsed ? "展开导航栏" : "收起导航栏"}
+          aria-expanded={!sidebarCollapsed}
+        >
+          {sidebarCollapsed ? <ChevronRight /> : <ChevronLeft />}
+        </button>
       </aside>
       <main>
         <header>

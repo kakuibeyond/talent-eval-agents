@@ -73,9 +73,7 @@ def test_graph_dispatches_every_candidate_dimension_pair_and_aggregates_results(
             task_id=work_item.task_id,
             candidate_id=work_item.candidate_id,
             dimension_id=work_item.dimension.dimension_id,
-            status="succeeded",
-            evidence_refs=[f"{work_item.candidate_id}:{work_item.dimension.dimension_id}:evidence"],
-            missing_items=[],
+            execution_status="succeeded",
             tool_call_ids=[f"call-{work_item.task_id}"],
         )
 
@@ -164,8 +162,7 @@ def test_graph_records_one_branch_failure_without_losing_other_results():
             task_id=work_item.task_id,
             candidate_id=work_item.candidate_id,
             dimension_id=work_item.dimension.dimension_id,
-            status="succeeded",
-            evidence_refs=["chunk-1"],
+            execution_status="succeeded",
         )
 
     graph = build_talent_evaluation_dispatch_graph(
@@ -183,8 +180,8 @@ def test_graph_records_one_branch_failure_without_losing_other_results():
 
     results = {item["candidate_id"]: item for item in result["branch_results"]}
     assert result["status"] == "branches_ready_with_failures"
-    assert results["C001"]["status"] == "succeeded"
-    assert results["C002"]["status"] == "failed"
+    assert results["C001"]["execution_status"] == "succeeded"
+    assert results["C002"]["execution_status"] == "failed"
     assert results["C002"]["error_code"] == "branch_timeout"
 
 
@@ -222,57 +219,6 @@ def test_graph_stops_before_fanout_when_work_item_budget_is_exceeded():
     assert result["required_work_items"] == 6
     assert result["work_item_limit"] == 4
     assert result["branch_results"] == []
-
-
-def test_agent_branch_worker_passes_dimension_hints_and_trusted_context():
-    from app.talent_decision_graph import DecisionContext
-    from app.talent_evaluation_dispatch import (
-        AssessmentWorkItem,
-        BranchAgentFinding,
-        build_agent_branch_worker,
-    )
-
-    class RecordingAgent:
-        def __init__(self):
-            self.input = None
-            self.config = None
-            self.context = None
-
-        def invoke(self, input_value, config=None, *, context=None):
-            self.input = input_value
-            self.config = config
-            self.context = context
-            return {
-                "structured_response": BranchAgentFinding(
-                    status="succeeded",
-                    evidence_refs=["chunk-1"],
-                    missing_items=["缺少量化指标"],
-                    tool_call_ids=["call-1"],
-                )
-            }
-
-    agent = RecordingAgent()
-    worker = build_agent_branch_worker(agent)
-    work_item = AssessmentWorkItem(
-        task_id="C001:rag_delivery",
-        candidate_id="C001",
-        dimension=_dimension("rag_delivery", weight_percent=100, source_requirement_ids=["S1"]),
-    )
-
-    result = worker(
-        work_item,
-        DecisionContext(tenant_id="tenant-a", permission_scopes=("hr_private",)),
-    )
-
-    prompt = agent.input["messages"][0]["content"]
-    assert "C001" in prompt
-    assert "rag_delivery 项目经验" in prompt
-    assert "项目职责与交付结果" in prompt
-    assert agent.context.tenant_id == "tenant-a"
-    assert agent.context.permission_scopes == ("hr_private",)
-    assert agent.context.run_id == "C001:rag_delivery"
-    assert agent.config == {"recursion_limit": 8}
-    assert result.evidence_refs == ["chunk-1"]
 
 
 def test_structured_dimension_generator_sends_request_and_query_plan_to_model():
@@ -344,37 +290,6 @@ def test_query_plan_candidate_provider_uses_only_trusted_runtime_context():
     assert service.context.permission_scopes == ("hr_private",)
 
 
-def test_evaluation_branch_agent_exposes_only_profile_and_evidence_tools(monkeypatch):
-    import app.talent_evaluation_dispatch as dispatch
-
-    captured = {}
-
-    def fake_create_agent(**kwargs):
-        captured.update(kwargs)
-        return "compiled-agent"
-
-    monkeypatch.setattr(dispatch, "create_agent", fake_create_agent)
-    tools = [
-        SimpleNamespace(name="lookup_job_descriptions"),
-        SimpleNamespace(name="filter_candidates"),
-        SimpleNamespace(name="search_candidate_evidence"),
-        SimpleNamespace(name="get_candidate_profiles"),
-    ]
-
-    result = dispatch.build_evaluation_branch_agent("model", tools)
-
-    assert result == "compiled-agent"
-    assert [item.name for item in captured["tools"]] == [
-        "search_candidate_evidence",
-        "get_candidate_profiles",
-    ]
-    assert captured["response_format"] is dispatch.BranchAgentFinding
-    assert captured["context_schema"] is dispatch.TalentToolContext
-    assert captured["name"] == "dimension_evidence_agent"
-    assert "retrieval_hints" in captured["system_prompt"]
-    assert "证据缺失" in captured["system_prompt"]
-
-
 def test_sync_work_item_send_leaves_timeout_to_tool_executor():
     from app.talent_evaluation_dispatch import build_work_item_sends
 
@@ -395,3 +310,265 @@ def test_sync_work_item_send_leaves_timeout_to_tool_executor():
     assert sends[0].node == "run_assessment_branch"
     assert sends[0].arg["work_item"]["task_id"] == "C001:rag_delivery"
     assert sends[0].timeout is None
+
+
+def test_verification_script_reuses_registered_runtime_graph(monkeypatch):
+    import importlib
+    import sys
+    from types import ModuleType
+
+    runtime = ModuleType("app.talent_evaluation_runtime")
+    runtime.graph = object()
+    monkeypatch.setitem(sys.modules, "app.talent_evaluation_runtime", runtime)
+    sys.modules.pop("scripts.verify_talent_evaluation_dispatch", None)
+
+    verifier = importlib.import_module("scripts.verify_talent_evaluation_dispatch")
+
+    assert verifier.graph is runtime.graph
+    assert not hasattr(verifier, "build_graph")
+
+
+def test_evidence_branch_worker_searches_each_requirement_and_keeps_evidence_pack(caplog):
+    from app.talent_decision_graph import DecisionContext
+    from app.talent_evaluation_dispatch import (
+        AssessmentWorkItem,
+        build_evidence_branch_worker,
+    )
+    from app.talent_tools import ToolExecutor, ToolPolicy
+
+    class RecordingService:
+        def __init__(self):
+            self.queries = []
+
+        def search_candidate_evidence(self, query, candidate_ids, *, context):
+            self.queries.append((query, candidate_ids, context))
+            index = len(self.queries)
+            requirement = work_item.dimension.evidence_requirements[index - 1]
+            return {
+                "candidate_ids": candidate_ids,
+                "evidence_packs": [
+                    {
+                        "schema_version": "2.0",
+                        "candidate_id": "C001",
+                        "requirements": [
+                            {
+                                "requirement_id": "branch_requirement",
+                                "query": query,
+                                "status": "sufficient" if index == 1 else "missing",
+                                "reason": "evidence_review" if index == 1 else "no_accessible_hits",
+                                "extraction_status": "succeeded" if index == 1 else "not_run",
+                                "facts": [
+                                    {
+                                        "event": "星河项目",
+                                        "period": "2025",
+                                        "claim": requirement,
+                                        "answer": "yes",
+                                        "sources": [
+                                            {
+                                                "citation_id": "citation-1",
+                                                "chunk_id": "chunk-1",
+                                                "quote": "主导星河项目上线",
+                                                "quote_start": 0,
+                                                "quote_end": 8,
+                                                "source_label": "项目复盘",
+                                            }
+                                        ],
+                                    }
+                                ] if index == 1 else [],
+                                "conflicts": [],
+                                "missing_information": [] if index == 1 else [requirement],
+                                "citations": [],
+                            }
+                        ],
+                    }
+                ],
+            }
+
+    work_item = AssessmentWorkItem(
+        task_id="C001:rag_delivery",
+        candidate_id="C001",
+        dimension=_dimension(
+            "rag_delivery",
+            weight_percent=100,
+            source_requirement_ids=["S1"],
+        ).model_copy(
+            update={
+                "evidence_requirements": ["项目职责", "量化结果"],
+                "retrieval_hints": ["RAG", "上线"],
+            }
+        ),
+    )
+    service = RecordingService()
+    worker = build_evidence_branch_worker(
+        service,
+        ToolExecutor(policy=ToolPolicy(max_attempts=1, backoff_seconds=0)),
+    )
+
+    with caplog.at_level("INFO", logger="app.talent_evaluation_dispatch"):
+        result = worker(
+            work_item,
+            DecisionContext(tenant_id="tenant-a", permission_scopes=("hr_private",)),
+        )
+
+    assert len(service.queries) == 2
+    assert service.queries[0][1] == ["C001"]
+    assert "RAG" in service.queries[0][0]
+    assert "项目职责" in service.queries[0][0]
+    assert service.queries[0][2].tenant_id == "tenant-a"
+    assert result.execution_status == "succeeded"
+    assert [item.requirement_id for item in result.requirements] == [
+        "rag_delivery:1",
+        "rag_delivery:2",
+    ]
+    assert result.requirements[0].facts[0].sources[0].chunk_id == "chunk-1"
+    assert result.requirements[1].missing_information == ["量化结果"]
+    assert len(result.tool_call_ids) == 2
+    assert not hasattr(result, "missing_items")
+    messages = "\n".join(caplog.messages)
+    assert "event=branch_worker_started" in messages
+    assert "event=branch_requirement_started" in messages
+    assert "event=branch_requirement_completed" in messages
+    assert "event=branch_worker_completed" in messages
+    assert "task_id=C001:rag_delivery" in messages
+    assert "candidate_id=C001" in messages
+
+
+def test_branch_evidence_provider_builds_reviewed_pack_from_trusted_sources():
+    from types import SimpleNamespace
+
+    from app.talent_evaluation_dispatch import build_branch_evidence_provider
+
+    def search(**kwargs):
+        return [
+            SimpleNamespace(
+                chunk_id="chunk-1",
+                candidate_id="C001",
+                content="index-copy",
+                rerank_score=0.9,
+                metadata={},
+            )
+        ]
+
+    def load_sources(chunks, *, tenant_id, permission_scopes):
+        return [
+            {
+                "chunk_id": "chunk-1",
+                "citation_id": "citation-1",
+                "candidate_id": "C001",
+                "content": "主导星河项目上线",
+                "document_title": "项目复盘",
+                "requirement_ids": ["branch_requirement"],
+            }
+        ]
+
+    provider = build_branch_evidence_provider(
+        search=search,
+        load_sources=load_sources,
+        extract=lambda requirement, sources: {
+            "facts": [
+                {
+                    "event": "星河项目",
+                    "period": "2025",
+                    "claim": "主导项目上线",
+                    "answer": "yes",
+                    "sources": [
+                        {"chunk_id": "chunk-1", "quote": "主导星河项目上线"}
+                    ],
+                }
+            ],
+            "fully_supported": True,
+            "missing_information": [],
+        },
+    )
+
+    result = provider(
+        query="RAG 项目职责",
+        candidate_ids=["C001"],
+        tenant_id="tenant-a",
+        permission_scopes=["hr_private"],
+        include_evidence_pack=True,
+    )
+
+    requirement = result["evidence_packs"][0]["requirements"][0]
+    assert requirement["status"] == "sufficient"
+    assert requirement["facts"][0]["sources"][0]["chunk_id"] == "chunk-1"
+    assert requirement["facts"][0]["sources"][0]["source_label"] == "项目复盘"
+
+
+def test_evidence_extraction_failure_does_not_relabel_successful_branch_execution():
+    from app.talent_decision_graph import DecisionContext
+    from app.talent_evaluation_dispatch import (
+        AssessmentWorkItem,
+        build_evidence_branch_worker,
+    )
+    from app.talent_tools import ToolExecutor, ToolPolicy
+
+    class Service:
+        def search_candidate_evidence(self, query, candidate_ids, *, context):
+            del query, context
+            return {
+                "candidate_ids": candidate_ids,
+                "evidence_packs": [
+                    {
+                        "schema_version": "2.0",
+                        "candidate_id": "C001",
+                        "requirements": [
+                            {
+                                "requirement_id": "branch_requirement",
+                                "query": "RAG 项目职责",
+                                "status": "partial",
+                                "reason": "extraction_failed",
+                                "extraction_status": "failed",
+                                "facts": [],
+                                "conflicts": [],
+                                "missing_information": [],
+                                "citations": [
+                                    {
+                                        "citation_id": "citation-1",
+                                        "chunk_id": "chunk-1",
+                                        "document_title": "项目复盘",
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            }
+
+    worker = build_evidence_branch_worker(
+        Service(),
+        ToolExecutor(policy=ToolPolicy(max_attempts=1, backoff_seconds=0)),
+    )
+    result = worker(
+        AssessmentWorkItem(
+            task_id="C001:rag_delivery",
+            candidate_id="C001",
+            dimension=_dimension(
+                "rag_delivery",
+                weight_percent=100,
+                source_requirement_ids=["S1"],
+            ),
+        ),
+        DecisionContext(tenant_id="tenant-a", permission_scopes=("hr_private",)),
+    )
+
+    assert result.execution_status == "succeeded"
+    assert result.requirements[0].extraction_status == "failed"
+    assert result.requirements[0].reason == "extraction_failed"
+
+
+def test_branch_draft_rejects_removed_parallel_summary_fields():
+    import pytest
+    from pydantic import ValidationError
+
+    from app.talent_evaluation_dispatch import BranchEvidenceDraft
+
+    with pytest.raises(ValidationError):
+        BranchEvidenceDraft(
+            task_id="C001:rag_delivery",
+            candidate_id="C001",
+            dimension_id="rag_delivery",
+            execution_status="succeeded",
+            evidence_refs=["chunk-1"],
+            missing_items=["缺少量化结果"],
+        )

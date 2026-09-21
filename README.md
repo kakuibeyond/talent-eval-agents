@@ -456,7 +456,7 @@ uv run --no-sync pytest -q \
   tests/test_talent_request_graph.py
 ```
 
-当前结果为 `39 passed, 1 warning in 1.41s`，后端完整回归为 `187 passed, 2 warnings in 9.40s`。真实链路脚本已完成语法验证；本次执行因本机 Docker 未启动，Milvus `127.0.0.1:19531` 不可连接，未生成模型与检索结果。
+当前结果为 `39 passed, 1 warning in 1.34s`，后端完整回归为 `189 passed, 2 warnings in 7.28s`。真实链路生成 3 个动态维度，权重为 35%、35% 和 30%；数据库返回候选人 `A0001`、`C001`，形成 6 个分支任务。图最终状态为 `branches_ready`，6 个分支均返回 `degraded`，没有失败分支。运行日志中的 `evidence_extraction_failed type=ValueError` 表明证据抽取未形成有效事实，分支按工具降级协议保留结构化结果。
 
 ## Chunk 模块
 
