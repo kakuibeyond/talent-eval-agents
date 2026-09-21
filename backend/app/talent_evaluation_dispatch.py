@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import operator
 import json
 import logging
+import operator
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from typing import Annotated, Any, Literal
 
 from langgraph.graph import END, START, StateGraph
@@ -26,7 +27,6 @@ class ScoreAnchor(BaseModel):
 
 
 class EvaluationDimension(BaseModel):
-    dimension_id: str = Field(pattern=r"^[a-z][a-z0-9_]{1,63}$")
     name: str = Field(min_length=1, max_length=80)
     definition: str = Field(min_length=1, max_length=500)
     weight_percent: int = Field(ge=1, le=100)
@@ -43,12 +43,13 @@ class EvaluationDimensionPlan(BaseModel):
 class DimensionValidationIssue(BaseModel):
     code: str
     message: str
-    dimension_ids: list[str] = Field(default_factory=list)
+    dimension_numbers: list[int] = Field(default_factory=list)
 
 
 class AssessmentWorkItem(BaseModel):
     task_id: str
     candidate_id: str
+    dimension_number: int = Field(ge=1)
     dimension: EvaluationDimension
 
 
@@ -92,7 +93,7 @@ class BranchEvidenceDraft(BaseModel):
 
     task_id: str
     candidate_id: str
-    dimension_id: str
+    dimension_number: int = Field(ge=1)
     execution_status: Literal["succeeded", "degraded", "failed"] = Field(
         validation_alias=AliasChoices("execution_status", "status")
     )
@@ -258,9 +259,9 @@ def build_structured_dimension_generator(
         logger.info(
             "event=dimension_generation_completed "
             "function=build_structured_dimension_generator.generate "
-            "dimension_count=%s dimension_ids=%s weight_total=%s",
+            "dimension_count=%s dimension_names=%s weight_total=%s",
             len(result.dimensions),
-            [item.dimension_id for item in result.dimensions],
+            [item.name for item in result.dimensions],
             sum(item.weight_percent for item in result.dimensions),
         )
         return result
@@ -324,9 +325,9 @@ def build_evidence_branch_worker(service: Any, executor: ToolExecutor) -> Branch
     ) -> BranchEvidenceDraft:
         logger.info(
             "event=branch_worker_started function=branch_worker task_id=%s "
-            "candidate_id=%s dimension_id=%s requirement_count=%s",
+            "candidate_id=%s dimension_number=%s requirement_count=%s",
             work_item.task_id, work_item.candidate_id,
-            work_item.dimension.dimension_id,
+            work_item.dimension_number,
             len(work_item.dimension.evidence_requirements),
         )
         tool_context = TalentToolContext(
@@ -338,18 +339,19 @@ def build_evidence_branch_worker(service: Any, executor: ToolExecutor) -> Branch
         requirement_results: list[RequirementEvidence] = []
         call_ids: list[str] = []
         degraded = False
-        for index, requirement in enumerate(
-            work_item.dimension.evidence_requirements,
-            start=1,
-        ):
-            requirement_id = f"{work_item.dimension.dimension_id}:{index}"
+
+        def evaluate_requirement(
+            index: int,
+            requirement: str,
+        ) -> tuple[RequirementEvidence, str | None, bool]:
+            requirement_id = f"{work_item.dimension_number}:{index}"
             query = _branch_query(work_item.dimension, requirement)
             logger.info(
                 "event=branch_requirement_started function=branch_worker "
-                "task_id=%s candidate_id=%s dimension_id=%s "
+                "task_id=%s candidate_id=%s dimension_number=%s "
                 "requirement_id=%s query_chars=%s",
                 work_item.task_id, work_item.candidate_id,
-                work_item.dimension.dimension_id, requirement_id, len(query),
+                work_item.dimension_number, requirement_id, len(query),
             )
             envelope = executor.execute(
                 "search_candidate_evidence",
@@ -366,28 +368,27 @@ def build_evidence_branch_worker(service: Any, executor: ToolExecutor) -> Branch
             )
             meta = envelope.get("meta") or {}
             call_id = meta.get("call_id")
-            if isinstance(call_id, str) and call_id:
-                call_ids.append(call_id)
+            normalized_call_id = call_id if isinstance(call_id, str) and call_id else None
             if not envelope.get("ok"):
-                degraded = True
                 error = envelope.get("error") or {}
                 logger.error(
                     "event=branch_requirement_failed function=branch_worker "
-                    "task_id=%s candidate_id=%s dimension_id=%s "
+                    "task_id=%s candidate_id=%s dimension_number=%s "
                     "requirement_id=%s call_id=%s error_code=%s degraded=%s",
                     work_item.task_id, work_item.candidate_id,
-                    work_item.dimension.dimension_id, requirement_id, call_id,
+                    work_item.dimension_number, requirement_id, call_id,
                     error.get("code") or "tool_failed", meta.get("degraded"),
                 )
-                requirement_results.append(
+                return (
                     _missing_requirement(
                         requirement_id=requirement_id,
                         query=query,
                         requirement=requirement,
                         reason=str(error.get("code") or "tool_failed"),
-                    )
+                    ),
+                    normalized_call_id,
+                    True,
                 )
-                continue
 
             data = envelope.get("data") or {}
             pack = next(
@@ -404,23 +405,23 @@ def build_evidence_branch_worker(service: Any, executor: ToolExecutor) -> Branch
                 else None
             )
             if not isinstance(raw_requirement, dict):
-                degraded = True
                 logger.error(
                     "event=branch_requirement_failed function=branch_worker "
-                    "task_id=%s candidate_id=%s dimension_id=%s "
+                    "task_id=%s candidate_id=%s dimension_number=%s "
                     "requirement_id=%s call_id=%s error_code=evidence_pack_missing",
                     work_item.task_id, work_item.candidate_id,
-                    work_item.dimension.dimension_id, requirement_id, call_id,
+                    work_item.dimension_number, requirement_id, call_id,
                 )
-                requirement_results.append(
+                return (
                     _missing_requirement(
                         requirement_id=requirement_id,
                         query=query,
                         requirement=requirement,
                         reason="evidence_pack_missing",
-                    )
+                    ),
+                    normalized_call_id,
+                    True,
                 )
-                continue
             result = RequirementEvidence.model_validate(
                 {
                     **raw_requirement,
@@ -431,33 +432,51 @@ def build_evidence_branch_worker(service: Any, executor: ToolExecutor) -> Branch
                     ),
                 }
             )
-            degraded = degraded or bool(meta.get("degraded"))
-            requirement_results.append(result)
             logger.info(
                 "event=branch_requirement_completed function=branch_worker "
-                "task_id=%s candidate_id=%s dimension_id=%s "
+                "task_id=%s candidate_id=%s dimension_number=%s "
                 "requirement_id=%s call_id=%s status=%s reason=%s "
                 "extraction_status=%s fact_count=%s citation_count=%s",
                 work_item.task_id, work_item.candidate_id,
-                work_item.dimension.dimension_id, requirement_id, call_id,
+                work_item.dimension_number, requirement_id, call_id,
                 result.status, result.reason, result.extraction_status,
                 len(result.facts), len(result.citations),
             )
+            return result, normalized_call_id, bool(meta.get("degraded"))
+
+        indexed_requirements = list(
+            enumerate(work_item.dimension.evidence_requirements, start=1)
+        )
+        with ThreadPoolExecutor(
+            max_workers=len(indexed_requirements),
+            thread_name_prefix="evaluation-requirement",
+        ) as pool:
+            futures = [
+                pool.submit(evaluate_requirement, index, requirement)
+                for index, requirement in indexed_requirements
+            ]
+            outcomes = [future.result() for future in futures]
+
+        for result, call_id, requirement_degraded in outcomes:
+            requirement_results.append(result)
+            if call_id is not None:
+                call_ids.append(call_id)
+            degraded = degraded or requirement_degraded
 
         branch_result = BranchEvidenceDraft(
             task_id=work_item.task_id,
             candidate_id=work_item.candidate_id,
-            dimension_id=work_item.dimension.dimension_id,
+            dimension_number=work_item.dimension_number,
             execution_status="degraded" if degraded else "succeeded",
             requirements=requirement_results,
             tool_call_ids=call_ids,
         )
         logger.info(
             "event=branch_worker_completed function=branch_worker task_id=%s "
-            "candidate_id=%s dimension_id=%s execution_status=%s "
+            "candidate_id=%s dimension_number=%s execution_status=%s "
             "requirement_count=%s tool_call_count=%s",
             work_item.task_id, work_item.candidate_id,
-            work_item.dimension.dimension_id, branch_result.execution_status,
+            work_item.dimension_number, branch_result.execution_status,
             len(branch_result.requirements), len(branch_result.tool_call_ids),
         )
         return branch_result
@@ -541,8 +560,8 @@ def _generate_dimensions(dimension_generator: DimensionGenerator):
         )
         logger.info(
             "event=graph_node_completed function=generate_dimensions "
-            "node=generate_dimensions dimension_count=%s dimension_ids=%s",
-            len(plan.dimensions), [item.dimension_id for item in plan.dimensions],
+            "node=generate_dimensions dimension_count=%s dimension_names=%s",
+            len(plan.dimensions), [item.name for item in plan.dimensions],
         )
         return {
             "dimensions": [item.model_dump(mode="json") for item in plan.dimensions],
@@ -613,14 +632,16 @@ def _prepare_work_items(max_work_items: int):
                 "work_item_limit": max_work_items,
                 "status": "capacity_exceeded",
             }
+        numbered_dimensions = list(enumerate(dimensions, start=1))
         work_items = [
             AssessmentWorkItem(
-                task_id=f"{candidate_id}:{dimension.dimension_id}",
+                task_id=f"{candidate_id}:{dimension_number}",
                 candidate_id=candidate_id,
+                dimension_number=dimension_number,
                 dimension=dimension,
             ).model_dump(mode="json")
             for candidate_id in state["candidate_ids"]
-            for dimension in dimensions
+            for dimension_number, dimension in numbered_dimensions
         ]
         logger.info(
             "event=graph_node_completed function=prepare_work_items "
@@ -669,9 +690,9 @@ def _run_assessment_branch(branch_worker: BranchWorker):
         work_item = AssessmentWorkItem.model_validate(state["work_item"])
         logger.info(
             "event=graph_branch_started function=run_assessment_branch "
-            "node=run_assessment_branch task_id=%s candidate_id=%s dimension_id=%s",
+            "node=run_assessment_branch task_id=%s candidate_id=%s dimension_number=%s",
             work_item.task_id, work_item.candidate_id,
-            work_item.dimension.dimension_id,
+            work_item.dimension_number,
         )
         try:
             result = branch_worker(work_item, runtime.context)
@@ -679,14 +700,14 @@ def _run_assessment_branch(branch_worker: BranchWorker):
             logger.error(
                 "event=graph_branch_failed function=run_assessment_branch "
                 "node=run_assessment_branch task_id=%s candidate_id=%s "
-                "dimension_id=%s error_code=branch_timeout error_type=%s",
+                "dimension_number=%s error_code=branch_timeout error_type=%s",
                 work_item.task_id, work_item.candidate_id,
-                work_item.dimension.dimension_id, type(exc).__name__,
+                work_item.dimension_number, type(exc).__name__,
             )
             result = BranchEvidenceDraft(
                 task_id=work_item.task_id,
                 candidate_id=work_item.candidate_id,
-                dimension_id=work_item.dimension.dimension_id,
+                dimension_number=work_item.dimension_number,
                 execution_status="failed",
                 error_code="branch_timeout",
                 error_message=str(exc),
@@ -695,14 +716,14 @@ def _run_assessment_branch(branch_worker: BranchWorker):
             logger.error(
                 "event=graph_branch_failed function=run_assessment_branch "
                 "node=run_assessment_branch task_id=%s candidate_id=%s "
-                "dimension_id=%s error_code=%s error_type=%s",
+                "dimension_number=%s error_code=%s error_type=%s",
                 work_item.task_id, work_item.candidate_id,
-                work_item.dimension.dimension_id, exc.code, type(exc).__name__,
+                work_item.dimension_number, exc.code, type(exc).__name__,
             )
             result = BranchEvidenceDraft(
                 task_id=work_item.task_id,
                 candidate_id=work_item.candidate_id,
-                dimension_id=work_item.dimension.dimension_id,
+                dimension_number=work_item.dimension_number,
                 execution_status="failed",
                 error_code=exc.code,
                 error_message=str(exc),
@@ -711,9 +732,9 @@ def _run_assessment_branch(branch_worker: BranchWorker):
             logger.exception(
                 "event=graph_branch_crashed function=run_assessment_branch "
                 "node=run_assessment_branch task_id=%s candidate_id=%s "
-                "dimension_id=%s error_type=%s",
+                "dimension_number=%s error_type=%s",
                 work_item.task_id, work_item.candidate_id,
-                work_item.dimension.dimension_id, type(exc).__name__,
+                work_item.dimension_number, type(exc).__name__,
             )
             raise
         logger.info(

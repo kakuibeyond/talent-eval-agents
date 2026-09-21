@@ -6,6 +6,7 @@ import logging
 
 from app.talent_decision_graph import DecisionContext
 from app.talent_evaluation_runtime import graph
+from utils.file_utils import dump_json
 
 logger = logging.getLogger(__name__)
 
@@ -26,17 +27,21 @@ def _configure_logging(level_name: str) -> None:
         logging.getLogger(logger_name).setLevel(level)
 
 
-def main() -> None:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="验证第 15 课动态维度与 Subagent 分发链路")
     parser.add_argument("--tenant-id", default="course-demo")
     parser.add_argument("--region", default="上海")
-    parser.add_argument("--max-concurrency", type=int, default=3)
+    parser.add_argument("--max-concurrency", type=int, default=6)
     parser.add_argument(
         "--log-level",
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
         default="INFO",
     )
-    args = parser.parse_args()
+    return parser
+
+
+def main() -> None:
+    args = _build_parser().parse_args()
     _configure_logging(args.log_level)
     logger.info(
         "event=verification_started function=main tenant_id=%s region=%s "
@@ -72,13 +77,16 @@ def main() -> None:
         ),
     )
 
+    import datetime
+    current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    dump_json(result, f"output/talent_evaluation_dispatch_result_{current_time}.json", ensure_ascii=False, indent=2)
     dimensions = [
         {
-            "dimension_id": item["dimension_id"],
+            "dimension_number": dimension_number,
             "weight_percent": item["weight_percent"],
             "retrieval_hints": item["retrieval_hints"],
         }
-        for item in result["dimensions"]
+        for dimension_number, item in enumerate(result["dimensions"], start=1)
     ]
     status_counts: dict[str, int] = {}
     for item in result["branch_results"]:
