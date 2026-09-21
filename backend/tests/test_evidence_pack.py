@@ -54,6 +54,38 @@ def test_verified_quote_includes_offsets_from_chunk_content():
     assert reference['quote_end'] == 6
 
 
+def test_quote_with_outer_whitespace_is_trimmed_before_exact_source_validation():
+    data = extraction()
+    data['facts'][0]['sources'][0]['quote'] = '  负责星河项目  '
+
+    reference = build(data)[0]['requirements'][0]['facts'][0]['sources'][0]
+
+    assert reference['quote'] == '负责星河项目'
+    assert reference['quote_start'] == 0
+    assert reference['quote_end'] == 6
+
+
+def test_unverifiable_quote_logs_safe_diagnostic_context(caplog):
+    data = extraction()
+    data['facts'][0]['sources'][0]['quote'] = '主持千人团队'
+
+    with caplog.at_level('ERROR', logger='app.evidence_pack'):
+        result = build(data)[0]['requirements'][0]
+
+    assert result['extraction_status'] == 'failed'
+    message = caplog.messages[-1]
+    assert 'event=evidence_extraction_failed' in message
+    assert 'function=_validate_fact_sources' in message
+    assert 'stage=source_validation' in message
+    assert 'error_code=quote_not_found' in message
+    assert 'candidate_id=C001' in message
+    assert 'requirement_id=S1' in message
+    assert 'chunk_id=a' in message
+    assert 'source_count=1' in message
+    assert '负责星河项目。' not in message
+    assert '主持千人团队' not in message
+
+
 @pytest.mark.parametrize('bad', ['unknown_id', 'fabricated_quote'])
 def test_unverifiable_model_output_falls_back_to_raw_citations(bad):
     data = extraction()
@@ -124,3 +156,69 @@ def test_blank_missing_information_is_rejected():
     result = build(data)[0]['requirements'][0]
     assert result['status'] == 'partial'
     assert result['extraction_status'] == 'failed'
+
+
+def test_model_extractor_uses_json_mode_and_sends_the_output_schema():
+    calls = {}
+
+    class StructuredModel:
+        def invoke(self, messages):
+            calls['messages'] = messages
+            return module().EvidenceExtraction(
+                facts=[],
+                fully_supported=False,
+                missing_information=['材料未说明职责'],
+            )
+
+    class Model:
+        def with_structured_output(self, schema, **kwargs):
+            calls['schema'] = schema
+            calls['kwargs'] = kwargs
+            return StructuredModel()
+
+    extract = module().model_extractor(Model())
+    result = extract(
+        {'requirement_id': 'S1', 'query': '负责过星河项目'},
+        [source()],
+    )
+
+    payload = calls['messages'][1][1]
+    assert result.missing_information == ['材料未说明职责']
+    assert calls['schema'] is module().EvidenceExtraction
+    assert calls['kwargs'] == {'method': 'json_mode'}
+    assert 'output_schema' in payload
+
+
+def test_model_extractor_uses_short_source_refs_and_restores_real_chunk_ids():
+    calls = {}
+
+    class StructuredModel:
+        def invoke(self, messages):
+            calls['payload'] = __import__('json').loads(messages[1][1])
+            return module().EvidenceExtraction.model_validate({
+                'facts': [{
+                    'event': '星河项目',
+                    'period': '2025',
+                    'claim': '担任项目负责人',
+                    'answer': 'yes',
+                    'sources': [{
+                        'chunk_id': 'source_1',
+                        'quote': '负责星河项目',
+                    }],
+                }],
+                'fully_supported': True,
+                'missing_information': [],
+            })
+
+    class Model:
+        def with_structured_output(self, schema, **kwargs):
+            del schema, kwargs
+            return StructuredModel()
+
+    result = module().model_extractor(Model())(
+        {'requirement_id': 'S1', 'query': '负责过星河项目'},
+        [source('a-real-uuid')],
+    )
+
+    assert calls['payload']['sources'][0]['chunk_id'] == 'source_1'
+    assert result.facts[0].sources[0].chunk_id == 'a-real-uuid'

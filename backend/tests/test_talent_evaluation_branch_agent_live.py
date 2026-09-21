@@ -75,10 +75,10 @@ def test_real_model_extraction_is_preserved_in_branch_evidence_pack():
     result = worker(
         AssessmentWorkItem.model_validate(
             {
-                "task_id": "A0001:d1",
+                "task_id": "A0001:1",
                 "candidate_id": "A0001",
+                "dimension_number": 1,
                 "dimension": {
-                    "dimension_id": "d1",
                     "name": "RAG 项目落地经验",
                     "definition": "评估候选人的 RAG 项目落地经验",
                     "weight_percent": 100,

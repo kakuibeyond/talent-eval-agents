@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 
 def _dimension(
-    dimension_id: str,
+    dimension_name: str,
     *,
     weight_percent: int,
     source_requirement_ids: list[str],
@@ -12,9 +12,8 @@ def _dimension(
     from app.talent_evaluation_dispatch import EvaluationDimension, ScoreAnchor
 
     return EvaluationDimension(
-        dimension_id=dimension_id,
-        name=dimension_id,
-        definition=f"{dimension_id} 的可取证定义",
+        name=dimension_name,
+        definition=f"{dimension_name} 的可取证定义",
         weight_percent=weight_percent,
         evidence_requirements=["项目职责与交付结果"],
         score_anchors=[
@@ -22,7 +21,7 @@ def _dimension(
             ScoreAnchor(score=3, description="存在部分可验证事实"),
             ScoreAnchor(score=5, description="存在完整且可验证的交付事实"),
         ],
-        retrieval_hints=[f"{dimension_id} 项目经验", f"{dimension_id} 交付结果"],
+        retrieval_hints=[f"{dimension_name} 项目经验", f"{dimension_name} 交付结果"],
         source_requirement_ids=source_requirement_ids,
     )
 
@@ -72,7 +71,7 @@ def test_graph_dispatches_every_candidate_dimension_pair_and_aggregates_results(
         return BranchEvidenceDraft(
             task_id=work_item.task_id,
             candidate_id=work_item.candidate_id,
-            dimension_id=work_item.dimension.dimension_id,
+            dimension_number=work_item.dimension_number,
             execution_status="succeeded",
             tool_call_ids=[f"call-{work_item.task_id}"],
         )
@@ -98,16 +97,18 @@ def test_graph_dispatches_every_candidate_dimension_pair_and_aggregates_results(
     )
 
     assert result["status"] == "branches_ready"
+    assert all("dimension_number" not in item for item in result["dimensions"])
+    assert [item["dimension_number"] for item in result["work_items"]] == [1, 2, 1, 2]
     assert len(result["work_items"]) == 4
     assert len(result["branch_results"]) == 4
     assert {
-        (item["candidate_id"], item["dimension_id"])
+        (item["candidate_id"], item["dimension_number"])
         for item in result["branch_results"]
     } == {
-        ("C001", "rag_delivery"),
-        ("C001", "agent_evaluation"),
-        ("C002", "rag_delivery"),
-        ("C002", "agent_evaluation"),
+        ("C001", 1),
+        ("C001", 2),
+        ("C002", 1),
+        ("C002", 2),
     }
 
 
@@ -161,7 +162,7 @@ def test_graph_records_one_branch_failure_without_losing_other_results():
         return BranchEvidenceDraft(
             task_id=work_item.task_id,
             candidate_id=work_item.candidate_id,
-            dimension_id=work_item.dimension.dimension_id,
+            dimension_number=work_item.dimension_number,
             execution_status="succeeded",
         )
 
@@ -254,6 +255,9 @@ def test_structured_dimension_generator_sends_request_and_query_plan_to_model():
     )
 
     assert result == plan
+    assert "dimension_number" not in EvaluationDimensionPlan.model_json_schema()[
+        "$defs"
+    ]["EvaluationDimension"]["properties"]
     assert "semantic_conditions" in model.messages[1][1]
     assert "query_plan" in model.messages[1][1]
     assert "review_feedback" not in model.messages[1][1]
@@ -296,8 +300,9 @@ def test_sync_work_item_send_leaves_timeout_to_tool_executor():
     sends = build_work_item_sends(
         [
             {
-                "task_id": "C001:rag_delivery",
+                "task_id": "C001:1",
                 "candidate_id": "C001",
+                "dimension_number": 1,
                 "dimension": _dimension(
                     "rag_delivery",
                     weight_percent=100,
@@ -308,7 +313,7 @@ def test_sync_work_item_send_leaves_timeout_to_tool_executor():
     )
 
     assert sends[0].node == "run_assessment_branch"
-    assert sends[0].arg["work_item"]["task_id"] == "C001:rag_delivery"
+    assert sends[0].arg["work_item"]["task_id"] == "C001:1"
     assert sends[0].timeout is None
 
 
@@ -328,6 +333,21 @@ def test_verification_script_reuses_registered_runtime_graph(monkeypatch):
     assert not hasattr(verifier, "build_graph")
 
 
+def test_verification_script_defaults_to_six_way_concurrency(monkeypatch):
+    import importlib
+    import sys
+    from types import ModuleType
+
+    runtime = ModuleType("app.talent_evaluation_runtime")
+    runtime.graph = object()
+    monkeypatch.setitem(sys.modules, "app.talent_evaluation_runtime", runtime)
+    sys.modules.pop("scripts.verify_talent_evaluation_dispatch", None)
+
+    verifier = importlib.import_module("scripts.verify_talent_evaluation_dispatch")
+
+    assert verifier._build_parser().parse_args([]).max_concurrency == 6
+
+
 def test_evidence_branch_worker_searches_each_requirement_and_keeps_evidence_pack(caplog):
     from app.talent_decision_graph import DecisionContext
     from app.talent_evaluation_dispatch import (
@@ -342,8 +362,12 @@ def test_evidence_branch_worker_searches_each_requirement_and_keeps_evidence_pac
 
         def search_candidate_evidence(self, query, candidate_ids, *, context):
             self.queries.append((query, candidate_ids, context))
-            index = len(self.queries)
-            requirement = work_item.dimension.evidence_requirements[index - 1]
+            requirement = next(
+                item
+                for item in work_item.dimension.evidence_requirements
+                if item in query
+            )
+            has_evidence = requirement == "项目职责"
             return {
                 "candidate_ids": candidate_ids,
                 "evidence_packs": [
@@ -354,9 +378,9 @@ def test_evidence_branch_worker_searches_each_requirement_and_keeps_evidence_pac
                             {
                                 "requirement_id": "branch_requirement",
                                 "query": query,
-                                "status": "sufficient" if index == 1 else "missing",
-                                "reason": "evidence_review" if index == 1 else "no_accessible_hits",
-                                "extraction_status": "succeeded" if index == 1 else "not_run",
+                                "status": "sufficient" if has_evidence else "missing",
+                                "reason": "evidence_review" if has_evidence else "no_accessible_hits",
+                                "extraction_status": "succeeded" if has_evidence else "not_run",
                                 "facts": [
                                     {
                                         "event": "星河项目",
@@ -374,9 +398,9 @@ def test_evidence_branch_worker_searches_each_requirement_and_keeps_evidence_pac
                                             }
                                         ],
                                     }
-                                ] if index == 1 else [],
+                                ] if has_evidence else [],
                                 "conflicts": [],
-                                "missing_information": [] if index == 1 else [requirement],
+                                "missing_information": [] if has_evidence else [requirement],
                                 "citations": [],
                             }
                         ],
@@ -385,8 +409,9 @@ def test_evidence_branch_worker_searches_each_requirement_and_keeps_evidence_pac
             }
 
     work_item = AssessmentWorkItem(
-        task_id="C001:rag_delivery",
+        task_id="C001:1",
         candidate_id="C001",
+        dimension_number=1,
         dimension=_dimension(
             "rag_delivery",
             weight_percent=100,
@@ -411,14 +436,14 @@ def test_evidence_branch_worker_searches_each_requirement_and_keeps_evidence_pac
         )
 
     assert len(service.queries) == 2
-    assert service.queries[0][1] == ["C001"]
-    assert "RAG" in service.queries[0][0]
-    assert "项目职责" in service.queries[0][0]
-    assert service.queries[0][2].tenant_id == "tenant-a"
+    assert all(item[1] == ["C001"] for item in service.queries)
+    assert all("RAG" in item[0] for item in service.queries)
+    assert any("项目职责" in item[0] for item in service.queries)
+    assert all(item[2].tenant_id == "tenant-a" for item in service.queries)
     assert result.execution_status == "succeeded"
     assert [item.requirement_id for item in result.requirements] == [
-        "rag_delivery:1",
-        "rag_delivery:2",
+        "1:1",
+        "1:2",
     ]
     assert result.requirements[0].facts[0].sources[0].chunk_id == "chunk-1"
     assert result.requirements[1].missing_information == ["量化结果"]
@@ -429,8 +454,93 @@ def test_evidence_branch_worker_searches_each_requirement_and_keeps_evidence_pac
     assert "event=branch_requirement_started" in messages
     assert "event=branch_requirement_completed" in messages
     assert "event=branch_worker_completed" in messages
-    assert "task_id=C001:rag_delivery" in messages
+    assert "task_id=C001:1" in messages
     assert "candidate_id=C001" in messages
+
+
+def test_evidence_branch_worker_runs_requirements_concurrently():
+    from threading import Condition
+
+    from app.talent_decision_graph import DecisionContext
+    from app.talent_evaluation_dispatch import (
+        AssessmentWorkItem,
+        build_evidence_branch_worker,
+    )
+    from app.talent_tools import ToolExecutor, ToolPolicy
+
+    class ConcurrentService:
+        def __init__(self):
+            self.condition = Condition()
+            self.started = 0
+            self.active = 0
+            self.max_active = 0
+
+        def search_candidate_evidence(self, query, candidate_ids, *, context):
+            del context
+            with self.condition:
+                self.started += 1
+                self.active += 1
+                self.max_active = max(self.max_active, self.active)
+                self.condition.notify_all()
+                self.condition.wait_for(lambda: self.started >= 2, timeout=0.5)
+                self.active -= 1
+            return {
+                "candidate_ids": candidate_ids,
+                "evidence_packs": [
+                    {
+                        "schema_version": "2.0",
+                        "candidate_id": candidate_ids[0],
+                        "requirements": [
+                            {
+                                "requirement_id": "branch_requirement",
+                                "query": query,
+                                "status": "missing",
+                                "reason": "no_relevant_evidence",
+                                "extraction_status": "succeeded",
+                                "facts": [],
+                                "conflicts": [],
+                                "missing_information": ["材料未覆盖当前要求"],
+                                "citations": [],
+                            }
+                        ],
+                    }
+                ],
+            }
+
+    work_item = AssessmentWorkItem(
+        task_id="C001:1",
+        candidate_id="C001",
+        dimension_number=1,
+        dimension=_dimension(
+            "rag_delivery",
+            weight_percent=100,
+            source_requirement_ids=["S1"],
+        ).model_copy(
+            update={"evidence_requirements": ["项目职责", "量化结果"]}
+        ),
+    )
+    service = ConcurrentService()
+    worker = build_evidence_branch_worker(
+        service,
+        ToolExecutor(
+            policy=ToolPolicy(
+                max_attempts=1,
+                timeout_seconds=1,
+                backoff_seconds=0,
+            )
+        ),
+    )
+
+    result = worker(
+        work_item,
+        DecisionContext(tenant_id="tenant-a", permission_scopes=("hr_private",)),
+    )
+
+    assert service.max_active == 2
+    assert [item.requirement_id for item in result.requirements] == [
+        "1:1",
+        "1:2",
+    ]
 
 
 def test_branch_evidence_provider_builds_reviewed_pack_from_trusted_sources():
@@ -541,8 +651,9 @@ def test_evidence_extraction_failure_does_not_relabel_successful_branch_executio
     )
     result = worker(
         AssessmentWorkItem(
-            task_id="C001:rag_delivery",
+            task_id="C001:1",
             candidate_id="C001",
+            dimension_number=1,
             dimension=_dimension(
                 "rag_delivery",
                 weight_percent=100,
@@ -565,9 +676,9 @@ def test_branch_draft_rejects_removed_parallel_summary_fields():
 
     with pytest.raises(ValidationError):
         BranchEvidenceDraft(
-            task_id="C001:rag_delivery",
+            task_id="C001:1",
             candidate_id="C001",
-            dimension_id="rag_delivery",
+            dimension_number=1,
             execution_status="succeeded",
             evidence_refs=["chunk-1"],
             missing_items=["缺少量化结果"],

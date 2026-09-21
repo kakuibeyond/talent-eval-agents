@@ -461,7 +461,7 @@ def build_evidence_branch_worker(service: Any, executor: ToolExecutor) -> Branch
             requirement_results.append(result)
             if call_id is not None:
                 call_ids.append(call_id)
-            degraded = degraded or requirement_degraded
+            degraded = degraded or requirement_degraded # 只要有一次requirement 结果 degraded 就算 degraded
 
         branch_result = BranchEvidenceDraft(
             task_id=work_item.task_id,

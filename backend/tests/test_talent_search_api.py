@@ -191,8 +191,9 @@ def test_talent_search_endpoint_retries_with_optimized_queries_when_first_search
 def test_opt_in_evidence_pack_keeps_existing_chunks(monkeypatch):
     from app.evidence_pack import EvidenceExtraction
     class EvidenceModel:
-        def with_structured_output(self, schema):
+        def with_structured_output(self, schema, **kwargs):
             if schema is EvidenceExtraction:
+                assert kwargs == {'method': 'json_mode'}
                 return SimpleNamespace(invoke=lambda _: EvidenceExtraction(
                     facts=[], fully_supported=False, missing_information=['材料未说明职责']))
             return FakeStructuredModel(schema)
