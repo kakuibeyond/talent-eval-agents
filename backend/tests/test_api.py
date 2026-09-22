@@ -31,6 +31,8 @@ def test_openapi_exposes_evidence_index_and_search_workflow():
     assert "/api/documents/{document_id}/evidence-index" in paths
     assert set(paths["/api/documents/{document_id}/evidence-index"]) == {"post"}
     assert set(paths["/api/documents"]) == {"get", "post", "delete"}
+    assert set(paths["/api/knowledge-bases"]) == {"get", "post"}
+    assert set(paths["/api/knowledge-bases/{knowledge_base_id}"]) == {"delete"}
     assert "/api/evidence/search" in paths
     assert set(paths["/api/evidence/search"]) == {"post"}
     assert "/api/index-jobs/{job_id}/retry" in paths

@@ -13,7 +13,8 @@
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/backend",
             "env": {
-                "PYTHONPATH": "${workspaceFolder}/backend"
+                "PYTHONPATH": "${workspaceFolder}/backend",
+                "RUN_LIVE_MODEL_TESTS": "1"
             }
         },
         {

@@ -1,0 +1,1588 @@
+{
+  "talent_request": {
+    "original_text": "筛选上海且具备 RAG 落地与 Agent 评测经验的人才，协作交付经验优先",
+    "source": "detailed_requirement",
+    "hard_conditions": [
+      {
+        "field": "region",
+        "operator": "eq",
+        "value": "上海"
+      }
+    ],
+    "semantic_conditions": [
+      {
+        "requirement_id": "S1",
+        "query": "RAG 项目落地经验",
+        "required": true
+      },
+      {
+        "requirement_id": "S2",
+        "query": "Agent 评测经验",
+        "required": true
+      }
+    ],
+    "evaluation_preferences": [
+      "协作与交付经验优先"
+    ]
+  },
+  "query_plan": {
+    "task_type": "find_talent",
+    "filters": [
+      {
+        "field": "region",
+        "operator": "eq",
+        "value": "上海"
+      }
+    ]
+  },
+  "dimensions": [
+    {
+      "name": "RAG 项目落地经验",
+      "definition": "评估候选人在检索增强生成（RAG）领域的实际项目交付经验，包括系统设计、落地实施和效果优化。",
+      "weight_percent": 40,
+      "evidence_requirements": [
+        "候选人档案或项目经历中明确提及参与过RAG相关系统的开发、部署或优化",
+        "有可验证的落地方案介绍、技术文档或成果产出"
+      ],
+      "score_anchors": [
+        {
+          "score": 0,
+          "description": "无任何 RAG 相关项目经验，或仅有理论学习/实验"
+        },
+        {
+          "score": 3,
+          "description": "参与过至少一个 RAG 项目，但非核心角色或项目规模小、未上线"
+        },
+        {
+          "score": 5,
+          "description": "作为核心成员主导或深度参与 RAG 系统的完整落地，有可展示的商业级成果"
+        }
+      ],
+      "retrieval_hints": [
+        "RAG 落地",
+        "检索增强生成 项目",
+        "RAG 系统 实施",
+        "知识库 问答 工程化"
+      ],
+      "source_requirement_ids": [
+        "S1"
+      ]
+    },
+    {
+      "name": "Agent 评测经验",
+      "definition": "评估候选人在智能体（Agent）评测领域的经验，包括评测方案设计、指标制定、工具使用或结果分析。",
+      "weight_percent": 40,
+      "evidence_requirements": [
+        "候选人有参与过 Agent 评测 Benchmark 的搭建或应用",
+        "有 Agent 行为测试、效果评估或自动化评测工具的开发经验"
+      ],
+      "score_anchors": [
+        {
+          "score": 0,
+          "description": "无任何 Agent 评测相关经验"
+        },
+        {
+          "score": 3,
+          "description": "参与过部分评测工作，但未系统设计或主导评测流程"
+        },
+        {
+          "score": 5,
+          "description": "主导过 Agent 评测方案设计，或构建过评测数据集/工具链，有可复现的成果"
+        }
+      ],
+      "retrieval_hints": [
+        "Agent 评测",
+        "智能体 评估",
+        "Benchmark 测试",
+        "Agent 自动化评测"
+      ],
+      "source_requirement_ids": [
+        "S2"
+      ]
+    },
+    {
+      "name": "协作与交付经验",
+      "definition": "评估候选人在跨团队协作与完整交付方面的经验，强调沟通协调、需求管理及按时交付能力。",
+      "weight_percent": 20,
+      "evidence_requirements": [
+        "项目经历中有明确的跨角色（研发、产品、测试）协作描述",
+        "有从需求到交付全流程的参与或推动记录"
+      ],
+      "score_anchors": [
+        {
+          "score": 0,
+          "description": "无明显的协作或交付案例，或仅独立完成模块"
+        },
+        {
+          "score": 3,
+          "description": "有协作经历但非核心推动角色，或交付过程中存在明显延期/质量缺陷"
+        },
+        {
+          "score": 5,
+          "description": "作为负责人或核心成员成功推动跨团队项目按时高质量交付，有具体成果支撑"
+        }
+      ],
+      "retrieval_hints": [
+        "协作 交付 项目",
+        "跨团队 合作",
+        "需求 跟进 交付",
+        "项目管理 协同"
+      ],
+      "source_requirement_ids": [
+        "preference:1"
+      ]
+    }
+  ],
+  "candidate_ids": [
+    "A0001",
+    "C001"
+  ],
+  "work_items": [
+    {
+      "task_id": "A0001:1",
+      "candidate_id": "A0001",
+      "dimension_number": 1,
+      "dimension": {
+        "name": "RAG 项目落地经验",
+        "definition": "评估候选人在检索增强生成（RAG）领域的实际项目交付经验，包括系统设计、落地实施和效果优化。",
+        "weight_percent": 40,
+        "evidence_requirements": [
+          "候选人档案或项目经历中明确提及参与过RAG相关系统的开发、部署或优化",
+          "有可验证的落地方案介绍、技术文档或成果产出"
+        ],
+        "score_anchors": [
+          {
+            "score": 0,
+            "description": "无任何 RAG 相关项目经验，或仅有理论学习/实验"
+          },
+          {
+            "score": 3,
+            "description": "参与过至少一个 RAG 项目，但非核心角色或项目规模小、未上线"
+          },
+          {
+            "score": 5,
+            "description": "作为核心成员主导或深度参与 RAG 系统的完整落地，有可展示的商业级成果"
+          }
+        ],
+        "retrieval_hints": [
+          "RAG 落地",
+          "检索增强生成 项目",
+          "RAG 系统 实施",
+          "知识库 问答 工程化"
+        ],
+        "source_requirement_ids": [
+          "S1"
+        ]
+      }
+    },
+    {
+      "task_id": "A0001:2",
+      "candidate_id": "A0001",
+      "dimension_number": 2,
+      "dimension": {
+        "name": "Agent 评测经验",
+        "definition": "评估候选人在智能体（Agent）评测领域的经验，包括评测方案设计、指标制定、工具使用或结果分析。",
+        "weight_percent": 40,
+        "evidence_requirements": [
+          "候选人有参与过 Agent 评测 Benchmark 的搭建或应用",
+          "有 Agent 行为测试、效果评估或自动化评测工具的开发经验"
+        ],
+        "score_anchors": [
+          {
+            "score": 0,
+            "description": "无任何 Agent 评测相关经验"
+          },
+          {
+            "score": 3,
+            "description": "参与过部分评测工作，但未系统设计或主导评测流程"
+          },
+          {
+            "score": 5,
+            "description": "主导过 Agent 评测方案设计，或构建过评测数据集/工具链，有可复现的成果"
+          }
+        ],
+        "retrieval_hints": [
+          "Agent 评测",
+          "智能体 评估",
+          "Benchmark 测试",
+          "Agent 自动化评测"
+        ],
+        "source_requirement_ids": [
+          "S2"
+        ]
+      }
+    },
+    {
+      "task_id": "A0001:3",
+      "candidate_id": "A0001",
+      "dimension_number": 3,
+      "dimension": {
+        "name": "协作与交付经验",
+        "definition": "评估候选人在跨团队协作与完整交付方面的经验，强调沟通协调、需求管理及按时交付能力。",
+        "weight_percent": 20,
+        "evidence_requirements": [
+          "项目经历中有明确的跨角色（研发、产品、测试）协作描述",
+          "有从需求到交付全流程的参与或推动记录"
+        ],
+        "score_anchors": [
+          {
+            "score": 0,
+            "description": "无明显的协作或交付案例，或仅独立完成模块"
+          },
+          {
+            "score": 3,
+            "description": "有协作经历但非核心推动角色，或交付过程中存在明显延期/质量缺陷"
+          },
+          {
+            "score": 5,
+            "description": "作为负责人或核心成员成功推动跨团队项目按时高质量交付，有具体成果支撑"
+          }
+        ],
+        "retrieval_hints": [
+          "协作 交付 项目",
+          "跨团队 合作",
+          "需求 跟进 交付",
+          "项目管理 协同"
+        ],
+        "source_requirement_ids": [
+          "preference:1"
+        ]
+      }
+    },
+    {
+      "task_id": "C001:1",
+      "candidate_id": "C001",
+      "dimension_number": 1,
+      "dimension": {
+        "name": "RAG 项目落地经验",
+        "definition": "评估候选人在检索增强生成（RAG）领域的实际项目交付经验，包括系统设计、落地实施和效果优化。",
+        "weight_percent": 40,
+        "evidence_requirements": [
+          "候选人档案或项目经历中明确提及参与过RAG相关系统的开发、部署或优化",
+          "有可验证的落地方案介绍、技术文档或成果产出"
+        ],
+        "score_anchors": [
+          {
+            "score": 0,
+            "description": "无任何 RAG 相关项目经验，或仅有理论学习/实验"
+          },
+          {
+            "score": 3,
+            "description": "参与过至少一个 RAG 项目，但非核心角色或项目规模小、未上线"
+          },
+          {
+            "score": 5,
+            "description": "作为核心成员主导或深度参与 RAG 系统的完整落地，有可展示的商业级成果"
+          }
+        ],
+        "retrieval_hints": [
+          "RAG 落地",
+          "检索增强生成 项目",
+          "RAG 系统 实施",
+          "知识库 问答 工程化"
+        ],
+        "source_requirement_ids": [
+          "S1"
+        ]
+      }
+    },
+    {
+      "task_id": "C001:2",
+      "candidate_id": "C001",
+      "dimension_number": 2,
+      "dimension": {
+        "name": "Agent 评测经验",
+        "definition": "评估候选人在智能体（Agent）评测领域的经验，包括评测方案设计、指标制定、工具使用或结果分析。",
+        "weight_percent": 40,
+        "evidence_requirements": [
+          "候选人有参与过 Agent 评测 Benchmark 的搭建或应用",
+          "有 Agent 行为测试、效果评估或自动化评测工具的开发经验"
+        ],
+        "score_anchors": [
+          {
+            "score": 0,
+            "description": "无任何 Agent 评测相关经验"
+          },
+          {
+            "score": 3,
+            "description": "参与过部分评测工作，但未系统设计或主导评测流程"
+          },
+          {
+            "score": 5,
+            "description": "主导过 Agent 评测方案设计，或构建过评测数据集/工具链，有可复现的成果"
+          }
+        ],
+        "retrieval_hints": [
+          "Agent 评测",
+          "智能体 评估",
+          "Benchmark 测试",
+          "Agent 自动化评测"
+        ],
+        "source_requirement_ids": [
+          "S2"
+        ]
+      }
+    },
+    {
+      "task_id": "C001:3",
+      "candidate_id": "C001",
+      "dimension_number": 3,
+      "dimension": {
+        "name": "协作与交付经验",
+        "definition": "评估候选人在跨团队协作与完整交付方面的经验，强调沟通协调、需求管理及按时交付能力。",
+        "weight_percent": 20,
+        "evidence_requirements": [
+          "项目经历中有明确的跨角色（研发、产品、测试）协作描述",
+          "有从需求到交付全流程的参与或推动记录"
+        ],
+        "score_anchors": [
+          {
+            "score": 0,
+            "description": "无明显的协作或交付案例，或仅独立完成模块"
+          },
+          {
+            "score": 3,
+            "description": "有协作经历但非核心推动角色，或交付过程中存在明显延期/质量缺陷"
+          },
+          {
+            "score": 5,
+            "description": "作为负责人或核心成员成功推动跨团队项目按时高质量交付，有具体成果支撑"
+          }
+        ],
+        "retrieval_hints": [
+          "协作 交付 项目",
+          "跨团队 合作",
+          "需求 跟进 交付",
+          "项目管理 协同"
+        ],
+        "source_requirement_ids": [
+          "preference:1"
+        ]
+      }
+    }
+  ],
+  "branch_results": [
+    {
+      "task_id": "A0001:1",
+      "candidate_id": "A0001",
+      "dimension_number": 1,
+      "execution_status": "succeeded",
+      "requirements": [
+        {
+          "requirement_id": "1:1",
+          "query": "RAG 落地 检索增强生成 项目 RAG 系统 实施 知识库 问答 工程化 候选人档案或项目经历中明确提及参与过RAG相关系统的开发、部署或优化",
+          "status": "sufficient",
+          "reason": "evidence_review",
+          "extraction_status": "succeeded",
+          "facts": [
+            {
+              "event": "新能源电池制造业经营分析 ChatBI",
+              "period": "2025-07/2025-12",
+              "claim": "参与RAG相关系统的开发、部署或优化",
+              "answer": "yes",
+              "sources": [
+                {
+                  "citation_id": "174b7b02-20dc-49e9-ab2c-bffe90eb4760",
+                  "chunk_id": "174b7b02-20dc-49e9-ab2c-bffe90eb4760",
+                  "quote": "• 双阶段 Pipeline 设计：负责第一阶段意图识别模块，基于 Qwen-Flash + Pydantic Structured Output 输出 intent、slots、confidence 结构化对象；第二阶段根据 intent 将请求路由至对应业务子链路，实现多场景链路统一调度，并对低置信度请求触发澄清兜底。\n\n• RAG 索引构建：基于 LangChain + PyMuPDF 完成 PDF 文档解析，采用递归切分与上下文重叠策略构建知识片段，完成Embedding 向量化、Milvus 持久化及来源/页码 metadata 关联；通过 MD5 复用已有索引，支持知识库增量更新。\n\n• RAG 增强生成：实现指代消解与条件式 Query 改写，采用混合检索策略，通过 BM25 关键词检索与 MMR 多样性向量检索完成双路召回，并使用 RRF 融合两路排序结果；对融合候选执行长度过滤、内容去重和 LLM Rerank，保留高相关证据进入回答模型，使上下文证据量减少 60%。\n\n• 分层记忆管理：设计滑动窗口、增量摘要与 Redis 关键事实组成的分层记忆，按会话长度触发摘要压缩，在保持多轮上下文一致性的同时将 Token 消耗降低约 35%。\n\n• 准确率优化：通过优化 RAG 检索与重排链路，引入 Hybrid Search 与 Rerank，将知识召回率提升至 95%+，客服自主解决率达到 86%。\n\n• 防幻觉与业务安全：通过 System Prompt 约束模型仅基于检索证据作答，无相关信息时拒答并转人工，同时保留来源引用；退款、改址等高风险操作增加鉴权、二次确认与幂等控制。\n\n2025-07 \\~ 2025-12\n\n新能源电池制造业经营分析 ChatBI\n\nAI 应用开发实习生",
+                  "quote_start": 0,
+                  "quote_end": 762,
+                  "source_label": "1111简历"
+                }
+              ]
+            },
+            {
+              "event": "灵枢智服 - 电商智能客服 Agent",
+              "period": "2026-01/2026-05",
+              "claim": "参与RAG相关系统的开发、部署或优化",
+              "answer": "yes",
+              "sources": [
+                {
+                  "citation_id": "a5096790-dc7a-43b5-b977-8d238c5122b7",
+                  "chunk_id": "a5096790-dc7a-43b5-b977-8d238c5122b7",
+                  "quote": "2026-01 \\~ 2026-05\n\n灵枢智服 - 电商智能客服 Agent\n\nAI 应用开发实习生\n\n【技术栈】 Python / LangChain / Qwen 系列模型 / Pydantic / PyMuPDF / DashScope Embedding / Milvus / Redis / BM25 /LLM Rerank\n\n【项目描述】 面向汽车电商平台选车咨询、购车政策、订单交付、地址修改、退款退订及售后投诉场景，构建融合意图路由、分层记忆与企业知识库 RAG 的智能客服 Agent，覆盖多类核心业务意图，实现 Query 改写、混合召回、LLM Rerank 和可溯源证据生成；项目文档评测口径下，知识召回率 95%+、自主解决率 86%，长对话 Token 消耗降低约 35%。",
+                  "quote_start": 0,
+                  "quote_end": 352,
+                  "source_label": "1111简历"
+                }
+              ]
+            }
+          ],
+          "conflicts": [],
+          "missing_information": [],
+          "citations": [
+            {
+              "citation_id": "174b7b02-20dc-49e9-ab2c-bffe90eb4760",
+              "chunk_id": "174b7b02-20dc-49e9-ab2c-bffe90eb4760",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "45212fb6-36ef-426f-989e-c9d9066f16a8",
+              "chunk_id": "45212fb6-36ef-426f-989e-c9d9066f16a8",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "f379ca0c-ef22-4928-8b87-e45f324dbffa",
+              "chunk_id": "f379ca0c-ef22-4928-8b87-e45f324dbffa",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "b72868c5-5897-4b66-abc7-0ab6f813cb29",
+              "chunk_id": "b72868c5-5897-4b66-abc7-0ab6f813cb29",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "89c2e495-00ca-4e2b-bd1b-e56362a26297",
+              "chunk_id": "89c2e495-00ca-4e2b-bd1b-e56362a26297",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "a5096790-dc7a-43b5-b977-8d238c5122b7",
+              "chunk_id": "a5096790-dc7a-43b5-b977-8d238c5122b7",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "059929fb-efa8-4827-8744-8345ed545d7f",
+              "chunk_id": "059929fb-efa8-4827-8744-8345ed545d7f",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "a0fa5b34-09e8-4ca4-8319-7bfdd3ce81f3",
+              "chunk_id": "a0fa5b34-09e8-4ca4-8319-7bfdd3ce81f3",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "1e5ff081-6f32-4656-b0bd-161d9693b0c0",
+              "chunk_id": "1e5ff081-6f32-4656-b0bd-161d9693b0c0",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+              "chunk_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "7a62810b-0975-4e9c-a8f6-8262d712b2fc",
+              "chunk_id": "7a62810b-0975-4e9c-a8f6-8262d712b2fc",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "54549907-5c6d-40fa-88dc-850728c5a795",
+              "chunk_id": "54549907-5c6d-40fa-88dc-850728c5a795",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "98427ce9-2888-40c5-8247-31026c3e2af5",
+              "chunk_id": "98427ce9-2888-40c5-8247-31026c3e2af5",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "34548330-915a-49e3-aa34-9b87d6715c2e",
+              "chunk_id": "34548330-915a-49e3-aa34-9b87d6715c2e",
+              "source_label": "1111简历"
+            }
+          ]
+        },
+        {
+          "requirement_id": "1:2",
+          "query": "RAG 落地 检索增强生成 项目 RAG 系统 实施 知识库 问答 工程化 有可验证的落地方案介绍、技术文档或成果产出",
+          "status": "sufficient",
+          "reason": "evidence_review",
+          "extraction_status": "succeeded",
+          "facts": [
+            {
+              "event": "灵枢智服 - 电商智能客服 Agent",
+              "period": "2026-01/2026-05",
+              "claim": "该项目实施了RAG系统并产出可验证的成果",
+              "answer": "yes",
+              "sources": [
+                {
+                  "citation_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+                  "chunk_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+                  "quote": "2026-01 \\~ 2026-05\n\n灵枢智服 - 电商智能客服 Agent\n\nAI 应用开发实习生\n\n【技术栈】 Python / LangChain / Qwen 系列模型 / Pydantic / PyMuPDF / DashScope Embedding / Milvus / Redis / BM25 /LLM Rerank\n\n【项目描述】 面向汽车电商平台选车咨询、购车政策、订单交付、地址修改、退款退订及售后投诉场景，构建融合意图路由、分层记忆与企业知识库 RAG 的智能客服 Agent，覆盖多类核心业务意图，实现 Query 改写、混合召回、LLM Rerank 和可溯源证据生成；项目文档评测口径下，知识召回率 95%+、自主解决率 86%，长对话 Token 消耗降低约 35%。\n\n• 双阶段 Pipeline 设计：负责第一阶段意图识别模块，基于 Qwen-Flash + Pydantic Structured Output 输出 intent、slots、confidence 结构化对象；第二阶段根据 intent 将请求路由至对应业务子链路，实现多场景链路统一调度，并对低置信度请求触发澄清兜底。\n\n• RAG 索引构建：基于 LangChain + PyMuPDF 完成 PDF 文档解析，采用递归切分与上下文重叠策略构建知识片段，完成Embedding 向量化、Milvus 持久化及来源/页码 metadata 关联；通过 MD5 复用已有索引，支持知识库增量更新。\n\n• RAG 增强生成：实现指代消解与条件式 Query 改写，采用混合检索策略，通过 BM25 关键词检索与 MMR 多样性向量检索完成双路召回，并使用 RRF 融合两路排序结果；对融合候选执行长度过滤、内容去重和 LLM Rerank，保留高相关证据进入回答模型，使上下文证据量减少 60%。\n\n• 分层记忆管理：设计滑动窗口、增量摘要与 Redis 关键事实组成的分层记忆，按会话长度触发摘要压缩，在保持多轮上下文一致性的同时将 Token 消耗降低约 35%。\n\n• 准确率优化：通过优化 RAG 检索与重排链路，引入 Hybrid Search 与 Rerank，将知识召回率提升至 95%+，客服自主解决率达到 86%。\n\n• 防幻觉与业务安全：通过 System Prompt 约束模型仅基于检索证据作答，无相关信息时拒答并转人工，同时保留来源引用；退款、改址等高风险操作增加鉴权、二次确认与幂等控制。",
+                  "quote_start": 187,
+                  "quote_end": 1250,
+                  "source_label": "1111简历"
+                }
+              ]
+            },
+            {
+              "event": "新能源电池制造业经营分析 ChatBI",
+              "period": "2025-07/2025-12",
+              "claim": "该项目实施了RAG系统并产出可验证的成果",
+              "answer": "yes",
+              "sources": [
+                {
+                  "citation_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+                  "chunk_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+                  "quote": "2025-07 \\~ 2025-12\n\n新能源电池制造业经营分析 ChatBI\n\nAI 应用开发实习生\n\n【技术栈】 Python / LangChain / OpenAI API / Pydantic / MySQL / Milvus / FastAPI / Schema Linking / Text2SQL / Plan-and-Execute Agent\n\n【项目描述】 面向新能源电池制造企业销售、财务及管理部门，构建覆盖意图理解、Schema Linking、指标 RAG、\n\nText2SQL、数据库执行和复杂分析 Agent 的企业级 ChatBI，支持利润、毛利率、区域收入及费用趋势等指标查询与多轮归因分析。\n\n• 链路与模块设计：设计意图理解、Schema Linking、SQL 生成、Agent 编排和结果总结模块，统一输入输出协议，打通自然语言问题到查询结果及分析结论的完整链路。\n\n• 三级 Schema Linking：构建 Milvus 表级语义召回、向量相似度与业务规则融合的字段匹配，以及基于 JSON 关系图和BFS 的最短 Join 路径推理。\n\n• 指标 RAG：建设包含 13 项核心经营指标的知识库，沉淀指标定义、计算公式、统计口径和依赖字段；生成 SQL 前检索指标口径并自动展开依赖。\n\n• Text2SQL Prompt：基于 Zero-shot、Few-shot 和 Chain-of-Thought 迭代 Prompt，引入时间范围、聚合维度、SQL 方言、空值处理及安全约束。\n\n• 复杂分析 Agent：实现 Plan-and-Execute 任务编排，使用 Pydantic 结构化传递步骤依赖与中间结果，支持失败重试及简单问题自动降级。\n\n• 服务化与安全治理：使用 FastAPI 封装 RESTful 接口和 SSE 流式输出，补充角色/行级过滤、危险 SQL 拦截、异常分类及慢查询 EXPLAIN。\n\n• 评测闭环：建立简单/中等/复杂三级离线评测与 bad case 回灌机制；项目文档评测口径下 SQL Execution Accuracy 由61% 提升至 84%，复杂任务完成率达到 78%。",
+                  "quote_start": 1252,
+                  "quote_end": 2189,
+                  "source_label": "1111简历"
+                }
+              ]
+            }
+          ],
+          "conflicts": [],
+          "missing_information": [],
+          "citations": [
+            {
+              "citation_id": "174b7b02-20dc-49e9-ab2c-bffe90eb4760",
+              "chunk_id": "174b7b02-20dc-49e9-ab2c-bffe90eb4760",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "45212fb6-36ef-426f-989e-c9d9066f16a8",
+              "chunk_id": "45212fb6-36ef-426f-989e-c9d9066f16a8",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "f379ca0c-ef22-4928-8b87-e45f324dbffa",
+              "chunk_id": "f379ca0c-ef22-4928-8b87-e45f324dbffa",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "b72868c5-5897-4b66-abc7-0ab6f813cb29",
+              "chunk_id": "b72868c5-5897-4b66-abc7-0ab6f813cb29",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "89c2e495-00ca-4e2b-bd1b-e56362a26297",
+              "chunk_id": "89c2e495-00ca-4e2b-bd1b-e56362a26297",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "a5096790-dc7a-43b5-b977-8d238c5122b7",
+              "chunk_id": "a5096790-dc7a-43b5-b977-8d238c5122b7",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "059929fb-efa8-4827-8744-8345ed545d7f",
+              "chunk_id": "059929fb-efa8-4827-8744-8345ed545d7f",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "a0fa5b34-09e8-4ca4-8319-7bfdd3ce81f3",
+              "chunk_id": "a0fa5b34-09e8-4ca4-8319-7bfdd3ce81f3",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "98427ce9-2888-40c5-8247-31026c3e2af5",
+              "chunk_id": "98427ce9-2888-40c5-8247-31026c3e2af5",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "34548330-915a-49e3-aa34-9b87d6715c2e",
+              "chunk_id": "34548330-915a-49e3-aa34-9b87d6715c2e",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "7a62810b-0975-4e9c-a8f6-8262d712b2fc",
+              "chunk_id": "7a62810b-0975-4e9c-a8f6-8262d712b2fc",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "54549907-5c6d-40fa-88dc-850728c5a795",
+              "chunk_id": "54549907-5c6d-40fa-88dc-850728c5a795",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "1e5ff081-6f32-4656-b0bd-161d9693b0c0",
+              "chunk_id": "1e5ff081-6f32-4656-b0bd-161d9693b0c0",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+              "chunk_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+              "source_label": "1111简历"
+            }
+          ]
+        }
+      ],
+      "tool_call_ids": [
+        "50d708d1-cc22-4a61-8923-32824c9156c5",
+        "a497ac34-42c0-4514-a50a-b5c7636d9df1"
+      ],
+      "error_code": null,
+      "error_message": null
+    },
+    {
+      "task_id": "A0001:2",
+      "candidate_id": "A0001",
+      "dimension_number": 2,
+      "execution_status": "succeeded",
+      "requirements": [
+        {
+          "requirement_id": "2:1",
+          "query": "Agent 评测 智能体 评估 Benchmark 测试 Agent 自动化评测 候选人有参与过 Agent 评测 Benchmark 的搭建或应用",
+          "status": "missing",
+          "reason": "no_relevant_evidence",
+          "extraction_status": "succeeded",
+          "facts": [],
+          "conflicts": [],
+          "missing_information": [
+            "未提及候选人参与过 Agent 评测 Benchmark 的搭建或应用"
+          ],
+          "citations": [
+            {
+              "citation_id": "a5096790-dc7a-43b5-b977-8d238c5122b7",
+              "chunk_id": "a5096790-dc7a-43b5-b977-8d238c5122b7",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "059929fb-efa8-4827-8744-8345ed545d7f",
+              "chunk_id": "059929fb-efa8-4827-8744-8345ed545d7f",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "a0fa5b34-09e8-4ca4-8319-7bfdd3ce81f3",
+              "chunk_id": "a0fa5b34-09e8-4ca4-8319-7bfdd3ce81f3",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "45212fb6-36ef-426f-989e-c9d9066f16a8",
+              "chunk_id": "45212fb6-36ef-426f-989e-c9d9066f16a8",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "89c2e495-00ca-4e2b-bd1b-e56362a26297",
+              "chunk_id": "89c2e495-00ca-4e2b-bd1b-e56362a26297",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "7a62810b-0975-4e9c-a8f6-8262d712b2fc",
+              "chunk_id": "7a62810b-0975-4e9c-a8f6-8262d712b2fc",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "54549907-5c6d-40fa-88dc-850728c5a795",
+              "chunk_id": "54549907-5c6d-40fa-88dc-850728c5a795",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "1e5ff081-6f32-4656-b0bd-161d9693b0c0",
+              "chunk_id": "1e5ff081-6f32-4656-b0bd-161d9693b0c0",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+              "chunk_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "f379ca0c-ef22-4928-8b87-e45f324dbffa",
+              "chunk_id": "f379ca0c-ef22-4928-8b87-e45f324dbffa",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "b72868c5-5897-4b66-abc7-0ab6f813cb29",
+              "chunk_id": "b72868c5-5897-4b66-abc7-0ab6f813cb29",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "98427ce9-2888-40c5-8247-31026c3e2af5",
+              "chunk_id": "98427ce9-2888-40c5-8247-31026c3e2af5",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "34548330-915a-49e3-aa34-9b87d6715c2e",
+              "chunk_id": "34548330-915a-49e3-aa34-9b87d6715c2e",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "174b7b02-20dc-49e9-ab2c-bffe90eb4760",
+              "chunk_id": "174b7b02-20dc-49e9-ab2c-bffe90eb4760",
+              "source_label": "1111简历"
+            }
+          ]
+        },
+        {
+          "requirement_id": "2:2",
+          "query": "Agent 评测 智能体 评估 Benchmark 测试 Agent 自动化评测 有 Agent 行为测试、效果评估或自动化评测工具的开发经验",
+          "status": "partial",
+          "reason": "evidence_review",
+          "extraction_status": "succeeded",
+          "facts": [
+            {
+              "event": "新能源电池制造业经营分析 ChatBI",
+              "period": "2025-07/2025-12",
+              "claim": "有效果评估（离线评测）经验",
+              "answer": "yes",
+              "sources": [
+                {
+                  "citation_id": "45212fb6-36ef-426f-989e-c9d9066f16a8",
+                  "chunk_id": "45212fb6-36ef-426f-989e-c9d9066f16a8",
+                  "quote": "• 评测闭环：建立简单/中等/复杂三级离线评测与 bad case 回灌机制；项目文档评测口径下 SQL Execution Accuracy 由61% 提升至 84%，复杂任务完成率达到 78%。",
+                  "quote_start": 1549,
+                  "quote_end": 1648,
+                  "source_label": "1111简历"
+                },
+                {
+                  "citation_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+                  "chunk_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+                  "quote": "• 评测与可观测性：熟悉 Recall@K、MRR、Execution Accuracy、P50/P95 延迟与 Token 消耗等指标，具备离线评测、bad case 回灌和链路日志追踪经验。",
+                  "quote_start": 2836,
+                  "quote_end": 2933,
+                  "source_label": "1111简历"
+                }
+              ]
+            }
+          ],
+          "conflicts": [],
+          "missing_information": [
+            "缺乏Agent行为测试经验",
+            "缺乏Benchmark测试经验",
+            "缺乏自动化评测工具开发经验"
+          ],
+          "citations": [
+            {
+              "citation_id": "a5096790-dc7a-43b5-b977-8d238c5122b7",
+              "chunk_id": "a5096790-dc7a-43b5-b977-8d238c5122b7",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "059929fb-efa8-4827-8744-8345ed545d7f",
+              "chunk_id": "059929fb-efa8-4827-8744-8345ed545d7f",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "a0fa5b34-09e8-4ca4-8319-7bfdd3ce81f3",
+              "chunk_id": "a0fa5b34-09e8-4ca4-8319-7bfdd3ce81f3",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "45212fb6-36ef-426f-989e-c9d9066f16a8",
+              "chunk_id": "45212fb6-36ef-426f-989e-c9d9066f16a8",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "89c2e495-00ca-4e2b-bd1b-e56362a26297",
+              "chunk_id": "89c2e495-00ca-4e2b-bd1b-e56362a26297",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "7a62810b-0975-4e9c-a8f6-8262d712b2fc",
+              "chunk_id": "7a62810b-0975-4e9c-a8f6-8262d712b2fc",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "54549907-5c6d-40fa-88dc-850728c5a795",
+              "chunk_id": "54549907-5c6d-40fa-88dc-850728c5a795",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "1e5ff081-6f32-4656-b0bd-161d9693b0c0",
+              "chunk_id": "1e5ff081-6f32-4656-b0bd-161d9693b0c0",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+              "chunk_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "f379ca0c-ef22-4928-8b87-e45f324dbffa",
+              "chunk_id": "f379ca0c-ef22-4928-8b87-e45f324dbffa",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "b72868c5-5897-4b66-abc7-0ab6f813cb29",
+              "chunk_id": "b72868c5-5897-4b66-abc7-0ab6f813cb29",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "98427ce9-2888-40c5-8247-31026c3e2af5",
+              "chunk_id": "98427ce9-2888-40c5-8247-31026c3e2af5",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "34548330-915a-49e3-aa34-9b87d6715c2e",
+              "chunk_id": "34548330-915a-49e3-aa34-9b87d6715c2e",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "174b7b02-20dc-49e9-ab2c-bffe90eb4760",
+              "chunk_id": "174b7b02-20dc-49e9-ab2c-bffe90eb4760",
+              "source_label": "1111简历"
+            }
+          ]
+        }
+      ],
+      "tool_call_ids": [
+        "4825d980-94b2-4e49-9a40-9aec1e8e156e",
+        "73b054ba-5b07-4ee8-9652-f27dec06a2b0"
+      ],
+      "error_code": null,
+      "error_message": null
+    },
+    {
+      "task_id": "A0001:3",
+      "candidate_id": "A0001",
+      "dimension_number": 3,
+      "execution_status": "succeeded",
+      "requirements": [
+        {
+          "requirement_id": "3:1",
+          "query": "协作 交付 项目 跨团队 合作 需求 跟进 交付 项目管理 协同 项目经历中有明确的跨角色（研发、产品、测试）协作描述",
+          "status": "missing",
+          "reason": "no_relevant_evidence",
+          "extraction_status": "succeeded",
+          "facts": [],
+          "conflicts": [],
+          "missing_information": [
+            "缺少明确的跨角色（研发、产品、测试）协作描述"
+          ],
+          "citations": [
+            {
+              "citation_id": "1e5ff081-6f32-4656-b0bd-161d9693b0c0",
+              "chunk_id": "1e5ff081-6f32-4656-b0bd-161d9693b0c0",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+              "chunk_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "a0fa5b34-09e8-4ca4-8319-7bfdd3ce81f3",
+              "chunk_id": "a0fa5b34-09e8-4ca4-8319-7bfdd3ce81f3",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "45212fb6-36ef-426f-989e-c9d9066f16a8",
+              "chunk_id": "45212fb6-36ef-426f-989e-c9d9066f16a8",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "a5096790-dc7a-43b5-b977-8d238c5122b7",
+              "chunk_id": "a5096790-dc7a-43b5-b977-8d238c5122b7",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "059929fb-efa8-4827-8744-8345ed545d7f",
+              "chunk_id": "059929fb-efa8-4827-8744-8345ed545d7f",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "7a62810b-0975-4e9c-a8f6-8262d712b2fc",
+              "chunk_id": "7a62810b-0975-4e9c-a8f6-8262d712b2fc",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "54549907-5c6d-40fa-88dc-850728c5a795",
+              "chunk_id": "54549907-5c6d-40fa-88dc-850728c5a795",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "89c2e495-00ca-4e2b-bd1b-e56362a26297",
+              "chunk_id": "89c2e495-00ca-4e2b-bd1b-e56362a26297",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "174b7b02-20dc-49e9-ab2c-bffe90eb4760",
+              "chunk_id": "174b7b02-20dc-49e9-ab2c-bffe90eb4760",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "98427ce9-2888-40c5-8247-31026c3e2af5",
+              "chunk_id": "98427ce9-2888-40c5-8247-31026c3e2af5",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "34548330-915a-49e3-aa34-9b87d6715c2e",
+              "chunk_id": "34548330-915a-49e3-aa34-9b87d6715c2e",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "f379ca0c-ef22-4928-8b87-e45f324dbffa",
+              "chunk_id": "f379ca0c-ef22-4928-8b87-e45f324dbffa",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "b72868c5-5897-4b66-abc7-0ab6f813cb29",
+              "chunk_id": "b72868c5-5897-4b66-abc7-0ab6f813cb29",
+              "source_label": "1111简历"
+            }
+          ]
+        },
+        {
+          "requirement_id": "3:2",
+          "query": "协作 交付 项目 跨团队 合作 需求 跟进 交付 项目管理 协同 有从需求到交付全流程的参与或推动记录",
+          "status": "partial",
+          "reason": "extraction_failed",
+          "extraction_status": "failed",
+          "facts": [],
+          "conflicts": [],
+          "missing_information": [],
+          "citations": [
+            {
+              "citation_id": "a5096790-dc7a-43b5-b977-8d238c5122b7",
+              "chunk_id": "a5096790-dc7a-43b5-b977-8d238c5122b7",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "059929fb-efa8-4827-8744-8345ed545d7f",
+              "chunk_id": "059929fb-efa8-4827-8744-8345ed545d7f",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "a0fa5b34-09e8-4ca4-8319-7bfdd3ce81f3",
+              "chunk_id": "a0fa5b34-09e8-4ca4-8319-7bfdd3ce81f3",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "45212fb6-36ef-426f-989e-c9d9066f16a8",
+              "chunk_id": "45212fb6-36ef-426f-989e-c9d9066f16a8",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "7a62810b-0975-4e9c-a8f6-8262d712b2fc",
+              "chunk_id": "7a62810b-0975-4e9c-a8f6-8262d712b2fc",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "54549907-5c6d-40fa-88dc-850728c5a795",
+              "chunk_id": "54549907-5c6d-40fa-88dc-850728c5a795",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "98427ce9-2888-40c5-8247-31026c3e2af5",
+              "chunk_id": "98427ce9-2888-40c5-8247-31026c3e2af5",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "34548330-915a-49e3-aa34-9b87d6715c2e",
+              "chunk_id": "34548330-915a-49e3-aa34-9b87d6715c2e",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "1e5ff081-6f32-4656-b0bd-161d9693b0c0",
+              "chunk_id": "1e5ff081-6f32-4656-b0bd-161d9693b0c0",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+              "chunk_id": "8a3b8a3d-8929-416d-9df7-0167cdde47dd",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "89c2e495-00ca-4e2b-bd1b-e56362a26297",
+              "chunk_id": "89c2e495-00ca-4e2b-bd1b-e56362a26297",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "f379ca0c-ef22-4928-8b87-e45f324dbffa",
+              "chunk_id": "f379ca0c-ef22-4928-8b87-e45f324dbffa",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "b72868c5-5897-4b66-abc7-0ab6f813cb29",
+              "chunk_id": "b72868c5-5897-4b66-abc7-0ab6f813cb29",
+              "source_label": "1111简历"
+            },
+            {
+              "citation_id": "174b7b02-20dc-49e9-ab2c-bffe90eb4760",
+              "chunk_id": "174b7b02-20dc-49e9-ab2c-bffe90eb4760",
+              "source_label": "1111简历"
+            }
+          ]
+        }
+      ],
+      "tool_call_ids": [
+        "41deba33-4093-4a86-824b-a920cc9ddb78",
+        "23bf10b4-bd7f-4308-8326-e06753026714"
+      ],
+      "error_code": null,
+      "error_message": null
+    },
+    {
+      "task_id": "C001:1",
+      "candidate_id": "C001",
+      "dimension_number": 1,
+      "execution_status": "succeeded",
+      "requirements": [
+        {
+          "requirement_id": "1:1",
+          "query": "RAG 落地 检索增强生成 项目 RAG 系统 实施 知识库 问答 工程化 候选人档案或项目经历中明确提及参与过RAG相关系统的开发、部署或优化",
+          "status": "sufficient",
+          "reason": "evidence_review",
+          "extraction_status": "succeeded",
+          "facts": [
+            {
+              "event": "统一知识问答服务",
+              "period": "unknown",
+              "claim": "参与了RAG相关系统的开发或部署",
+              "answer": "yes",
+              "sources": [
+                {
+                  "citation_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+                  "chunk_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+                  "quote": "为客服、售前和内部运营建设统一知识问答服务，接入产品手册、实施方案、FAQ 与工单记录。负责检索服务、权限过滤和答案溯源模块，实现按租户、部门和文档密级的检索前过滤；设计段落级来源引用结构，使前端可以定位到原文件页码。针对批量导入造成的写入抖动，重构向量化任务的并发控制和断点续跑机制，并通过慢查询分析调整索引。系统覆盖 6 个业务部门，知识文档约 18 万份，工作日峰值每分钟 3200 次查询。",
+                  "quote_start": 519,
+                  "quote_end": 718,
+                  "source_label": "C001_林晓岚_项目复盘"
+                },
+                {
+                  "citation_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+                  "chunk_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+                  "quote": "为客服、售前和内部运营建设统一知识问答服务，接入产品手册、实施方案、FAQ 与工单记录。负责检索服务、权限过滤和答案溯源模块，实现按租户、部门和文档密级的检索前过滤；设计段落级来源引用结构，使前端可以定位到原文件页码。针对批量导入造成的写入抖动，重构向量化任务的并发控制和断点续跑机制，并通过慢查询分析调整索引。系统覆盖 6 个业务部门，知识文档约 18 万份，工作日峰值每分钟 3200 次查询。",
+                  "quote_start": 0,
+                  "quote_end": 199,
+                  "source_label": "C001_林晓岚_项目复盘"
+                },
+                {
+                  "citation_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+                  "chunk_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+                  "quote": "为客服、售前和内部运营建设统一知识问答服务，接入产品手册、实施方案、FAQ 与工单记录。负责检索服务、权限过滤和答案溯源模块，实现按租户、部门和文档密级的检索前过滤；设计段落级来源引用结构，使前端可以定位到原文件页码。针对批量导入造成的写入抖动，重构向量化任务的并发控制和断点续跑机制，并通过慢查询分析调整索引。系统覆盖 6 个业务部门，知识文档约 18 万份，工作日峰值每分钟 3200 次查询。",
+                  "quote_start": 0,
+                  "quote_end": 199,
+                  "source_label": "C001_林晓岚_项目复盘"
+                }
+              ]
+            }
+          ],
+          "conflicts": [],
+          "missing_information": [],
+          "citations": [
+            {
+              "citation_id": "1559dbfe-208d-4c32-a9e2-88bf917facb9",
+              "chunk_id": "1559dbfe-208d-4c32-a9e2-88bf917facb9",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+              "chunk_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+              "chunk_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+              "chunk_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "4f23af62-fc50-4f3e-a906-de9535d69571",
+              "chunk_id": "4f23af62-fc50-4f3e-a906-de9535d69571",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "067326bf-fdb6-4af0-8f33-a431c044ac8d",
+              "chunk_id": "067326bf-fdb6-4af0-8f33-a431c044ac8d",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "25bf2eda-2aa0-4487-a361-43b248adb889",
+              "chunk_id": "25bf2eda-2aa0-4487-a361-43b248adb889",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "b031af40-53ad-4665-8252-b94cac4c8e6d",
+              "chunk_id": "b031af40-53ad-4665-8252-b94cac4c8e6d",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "95713e13-2d19-4f2d-8a36-00e378d5411c",
+              "chunk_id": "95713e13-2d19-4f2d-8a36-00e378d5411c",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "18106447-11d4-4b47-b89b-efc99ca6fa90",
+              "chunk_id": "18106447-11d4-4b47-b89b-efc99ca6fa90",
+              "source_label": "C001_林晓岚_项目复盘"
+            }
+          ]
+        },
+        {
+          "requirement_id": "1:2",
+          "query": "RAG 落地 检索增强生成 项目 RAG 系统 实施 知识库 问答 工程化 有可验证的落地方案介绍、技术文档或成果产出",
+          "status": "sufficient",
+          "reason": "evidence_review",
+          "extraction_status": "succeeded",
+          "facts": [
+            {
+              "event": "统一知识问答服务项目",
+              "period": "unknown",
+              "claim": "实施了知识库问答系统",
+              "answer": "yes",
+              "sources": [
+                {
+                  "citation_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+                  "chunk_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+                  "quote": "为客服、售前和内部运营建设统一知识问答服务，接入产品手册、实施方案、FAQ 与工单记录。负责检索服务、权限过滤和答案溯源模块，实现按租户、部门和文档密级的检索前过滤；设计段落级来源引用结构，使前端可以定位到原文件页码。针对批量导入造成的写入抖动，重构向量化任务的并发控制和断点续跑机制，并通过慢查询分析调整索引。系统覆盖 6 个业务部门，知识文档约 18 万份，工作日峰值每分钟 3200 次查询。",
+                  "quote_start": 0,
+                  "quote_end": 199,
+                  "source_label": "C001_林晓岚_项目复盘"
+                },
+                {
+                  "citation_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+                  "chunk_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+                  "quote": "为客服、售前和内部运营建设统一知识问答服务，接入产品手册、实施方案、FAQ 与工单记录。负责检索服务、权限过滤和答案溯源模块，实现按租户、部门和文档密级的检索前过滤；设计段落级来源引用结构，使前端可以定位到原文件页码。针对批量导入造成的写入抖动，重构向量化任务的并发控制和断点续跑机制，并通过慢查询分析调整索引。系统覆盖 6 个业务部门，知识文档约 18 万份，工作日峰值每分钟 3200 次查询。",
+                  "quote_start": 0,
+                  "quote_end": 199,
+                  "source_label": "C001_林晓岚_项目复盘"
+                },
+                {
+                  "citation_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+                  "chunk_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+                  "quote": "为客服、售前和内部运营建设统一知识问答服务，接入产品手册、实施方案、FAQ 与工单记录。负责检索服务、权限过滤和答案溯源模块，实现按租户、部门和文档密级的检索前过滤；设计段落级来源引用结构，使前端可以定位到原文件页码。针对批量导入造成的写入抖动，重构向量化任务的并发控制和断点续跑机制，并通过慢查询分析调整索引。系统覆盖 6 个业务部门，知识文档约 18 万份，工作日峰值每分钟 3200 次查询。",
+                  "quote_start": 519,
+                  "quote_end": 718,
+                  "source_label": "C001_林晓岚_项目复盘"
+                }
+              ]
+            },
+            {
+              "event": "统一知识问答服务项目",
+              "period": "unknown",
+              "claim": "有可验证的成果产出",
+              "answer": "yes",
+              "sources": [
+                {
+                  "citation_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+                  "chunk_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+                  "quote": "系统覆盖 6 个业务部门，知识文档约 18 万份，工作日峰值每分钟 3200 次查询。",
+                  "quote_start": 156,
+                  "quote_end": 199,
+                  "source_label": "C001_林晓岚_项目复盘"
+                },
+                {
+                  "citation_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+                  "chunk_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+                  "quote": "系统覆盖 6 个业务部门，知识文档约 18 万份，工作日峰值每分钟 3200 次查询。",
+                  "quote_start": 156,
+                  "quote_end": 199,
+                  "source_label": "C001_林晓岚_项目复盘"
+                },
+                {
+                  "citation_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+                  "chunk_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+                  "quote": "系统覆盖 6 个业务部门，知识文档约 18 万份，工作日峰值每分钟 3200 次查询。",
+                  "quote_start": 675,
+                  "quote_end": 718,
+                  "source_label": "C001_林晓岚_项目复盘"
+                }
+              ]
+            }
+          ],
+          "conflicts": [],
+          "missing_information": [],
+          "citations": [
+            {
+              "citation_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+              "chunk_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+              "chunk_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "4f23af62-fc50-4f3e-a906-de9535d69571",
+              "chunk_id": "4f23af62-fc50-4f3e-a906-de9535d69571",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "067326bf-fdb6-4af0-8f33-a431c044ac8d",
+              "chunk_id": "067326bf-fdb6-4af0-8f33-a431c044ac8d",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "95713e13-2d19-4f2d-8a36-00e378d5411c",
+              "chunk_id": "95713e13-2d19-4f2d-8a36-00e378d5411c",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "18106447-11d4-4b47-b89b-efc99ca6fa90",
+              "chunk_id": "18106447-11d4-4b47-b89b-efc99ca6fa90",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "25bf2eda-2aa0-4487-a361-43b248adb889",
+              "chunk_id": "25bf2eda-2aa0-4487-a361-43b248adb889",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "b031af40-53ad-4665-8252-b94cac4c8e6d",
+              "chunk_id": "b031af40-53ad-4665-8252-b94cac4c8e6d",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "1559dbfe-208d-4c32-a9e2-88bf917facb9",
+              "chunk_id": "1559dbfe-208d-4c32-a9e2-88bf917facb9",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+              "chunk_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+              "source_label": "C001_林晓岚_项目复盘"
+            }
+          ]
+        }
+      ],
+      "tool_call_ids": [
+        "d50ec982-47e8-4519-9e43-af777666a0c5",
+        "f11d6ff7-211a-470c-83d3-d3c84132b43c"
+      ],
+      "error_code": null,
+      "error_message": null
+    },
+    {
+      "task_id": "C001:2",
+      "candidate_id": "C001",
+      "dimension_number": 2,
+      "execution_status": "succeeded",
+      "requirements": [
+        {
+          "requirement_id": "2:1",
+          "query": "Agent 评测 智能体 评估 Benchmark 测试 Agent 自动化评测 候选人有参与过 Agent 评测 Benchmark 的搭建或应用",
+          "status": "missing",
+          "reason": "no_relevant_evidence",
+          "extraction_status": "succeeded",
+          "facts": [],
+          "conflicts": [],
+          "missing_information": [
+            "未找到候选人参与Agent评测Benchmark搭建或应用的相关事实。"
+          ],
+          "citations": [
+            {
+              "citation_id": "1559dbfe-208d-4c32-a9e2-88bf917facb9",
+              "chunk_id": "1559dbfe-208d-4c32-a9e2-88bf917facb9",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+              "chunk_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "4f23af62-fc50-4f3e-a906-de9535d69571",
+              "chunk_id": "4f23af62-fc50-4f3e-a906-de9535d69571",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "067326bf-fdb6-4af0-8f33-a431c044ac8d",
+              "chunk_id": "067326bf-fdb6-4af0-8f33-a431c044ac8d",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "25bf2eda-2aa0-4487-a361-43b248adb889",
+              "chunk_id": "25bf2eda-2aa0-4487-a361-43b248adb889",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "b031af40-53ad-4665-8252-b94cac4c8e6d",
+              "chunk_id": "b031af40-53ad-4665-8252-b94cac4c8e6d",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "95713e13-2d19-4f2d-8a36-00e378d5411c",
+              "chunk_id": "95713e13-2d19-4f2d-8a36-00e378d5411c",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "18106447-11d4-4b47-b89b-efc99ca6fa90",
+              "chunk_id": "18106447-11d4-4b47-b89b-efc99ca6fa90",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+              "chunk_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+              "chunk_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+              "source_label": "C001_林晓岚_项目复盘"
+            }
+          ]
+        },
+        {
+          "requirement_id": "2:2",
+          "query": "Agent 评测 智能体 评估 Benchmark 测试 Agent 自动化评测 有 Agent 行为测试、效果评估或自动化评测工具的开发经验",
+          "status": "missing",
+          "reason": "no_relevant_evidence",
+          "extraction_status": "succeeded",
+          "facts": [],
+          "conflicts": [],
+          "missing_information": [
+            "未发现涉及Agent行为测试、效果评估或自动化评测工具开发经验的任何描述"
+          ],
+          "citations": [
+            {
+              "citation_id": "4f23af62-fc50-4f3e-a906-de9535d69571",
+              "chunk_id": "4f23af62-fc50-4f3e-a906-de9535d69571",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "067326bf-fdb6-4af0-8f33-a431c044ac8d",
+              "chunk_id": "067326bf-fdb6-4af0-8f33-a431c044ac8d",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "25bf2eda-2aa0-4487-a361-43b248adb889",
+              "chunk_id": "25bf2eda-2aa0-4487-a361-43b248adb889",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "b031af40-53ad-4665-8252-b94cac4c8e6d",
+              "chunk_id": "b031af40-53ad-4665-8252-b94cac4c8e6d",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "1559dbfe-208d-4c32-a9e2-88bf917facb9",
+              "chunk_id": "1559dbfe-208d-4c32-a9e2-88bf917facb9",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+              "chunk_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "95713e13-2d19-4f2d-8a36-00e378d5411c",
+              "chunk_id": "95713e13-2d19-4f2d-8a36-00e378d5411c",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "18106447-11d4-4b47-b89b-efc99ca6fa90",
+              "chunk_id": "18106447-11d4-4b47-b89b-efc99ca6fa90",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+              "chunk_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+              "chunk_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+              "source_label": "C001_林晓岚_项目复盘"
+            }
+          ]
+        }
+      ],
+      "tool_call_ids": [
+        "26af6574-b6e6-4c31-9809-647d472f9515",
+        "d9f1c7ae-c7f0-4bf6-9380-de02e717c8cc"
+      ],
+      "error_code": null,
+      "error_message": null
+    },
+    {
+      "task_id": "C001:3",
+      "candidate_id": "C001",
+      "dimension_number": 3,
+      "execution_status": "succeeded",
+      "requirements": [
+        {
+          "requirement_id": "3:1",
+          "query": "协作 交付 项目 跨团队 合作 需求 跟进 交付 项目管理 协同 项目经历中有明确的跨角色（研发、产品、测试）协作描述",
+          "status": "partial",
+          "reason": "evidence_review",
+          "extraction_status": "succeeded",
+          "facts": [
+            {
+              "event": "unknown",
+              "period": "unknown",
+              "claim": "存在跨角色（研发、产品、测试）协作",
+              "answer": "yes",
+              "sources": [
+                {
+                  "citation_id": "4f23af62-fc50-4f3e-a906-de9535d69571",
+                  "chunk_id": "4f23af62-fc50-4f3e-a906-de9535d69571",
+                  "quote": "参会角色：项目负责人、产品经理、研发负责人、测试负责人、业务代表",
+                  "quote_start": 22,
+                  "quote_end": 54,
+                  "source_label": "C001_林晓岚_项目复盘"
+                },
+                {
+                  "citation_id": "067326bf-fdb6-4af0-8f33-a431c044ac8d",
+                  "chunk_id": "067326bf-fdb6-4af0-8f33-a431c044ac8d",
+                  "quote": "参会角色：项目负责人、产品经理、研发负责人、测试负责人、业务代表",
+                  "quote_start": 22,
+                  "quote_end": 54,
+                  "source_label": "C001_林晓岚_项目复盘"
+                },
+                {
+                  "citation_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+                  "chunk_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+                  "quote": "参会角色：项目负责人、产品经理、研发负责人、测试负责人、业务代表",
+                  "quote_start": 742,
+                  "quote_end": 774,
+                  "source_label": "C001_林晓岚_项目复盘"
+                }
+              ]
+            }
+          ],
+          "conflicts": [],
+          "missing_information": [
+            "会议所属项目未明确，无法确定该协作是否属于项目经历"
+          ],
+          "citations": [
+            {
+              "citation_id": "4f23af62-fc50-4f3e-a906-de9535d69571",
+              "chunk_id": "4f23af62-fc50-4f3e-a906-de9535d69571",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "067326bf-fdb6-4af0-8f33-a431c044ac8d",
+              "chunk_id": "067326bf-fdb6-4af0-8f33-a431c044ac8d",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "25bf2eda-2aa0-4487-a361-43b248adb889",
+              "chunk_id": "25bf2eda-2aa0-4487-a361-43b248adb889",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "b031af40-53ad-4665-8252-b94cac4c8e6d",
+              "chunk_id": "b031af40-53ad-4665-8252-b94cac4c8e6d",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "1559dbfe-208d-4c32-a9e2-88bf917facb9",
+              "chunk_id": "1559dbfe-208d-4c32-a9e2-88bf917facb9",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+              "chunk_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "95713e13-2d19-4f2d-8a36-00e378d5411c",
+              "chunk_id": "95713e13-2d19-4f2d-8a36-00e378d5411c",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "18106447-11d4-4b47-b89b-efc99ca6fa90",
+              "chunk_id": "18106447-11d4-4b47-b89b-efc99ca6fa90",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+              "chunk_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+              "chunk_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+              "source_label": "C001_林晓岚_项目复盘"
+            }
+          ]
+        },
+        {
+          "requirement_id": "3:2",
+          "query": "协作 交付 项目 跨团队 合作 需求 跟进 交付 项目管理 协同 有从需求到交付全流程的参与或推动记录",
+          "status": "sufficient",
+          "reason": "evidence_review",
+          "extraction_status": "succeeded",
+          "facts": [
+            {
+              "event": "合同审查平台",
+              "period": "unknown",
+              "claim": "有从需求到交付全流程的参与或推动记录",
+              "answer": "yes",
+              "sources": [
+                {
+                  "citation_id": "95713e13-2d19-4f2d-8a36-00e378d5411c",
+                  "chunk_id": "95713e13-2d19-4f2d-8a36-00e378d5411c",
+                  "quote": "面向集团法务、采购与销售团队建设合同审查平台，接入采购合同、销售合同、保密协议等 12 类模板。负责服务端总体方案和审查任务编排，将文件上传、版面解析、条款切分、规则匹配、模型复核与报告生成拆成可恢复任务。设计文档版本、审查批次、规则命中和人工复核数据模型，使用 PostgreSQL 保存事务数据，MinIO 保存原文件与审查报告，Redis 维护幂等键和短期任务状态。为避免长任务阻塞接口，引入消息队列并实现失败重试、超时终止与回调补偿。上线后平均单份合同处理时间由人工 45 分钟降至 8 分钟，审查报告生成成功率连续三个季度保持在 99.3% 以上。",
+                  "quote_start": 0,
+                  "quote_end": 279,
+                  "source_label": "C001_林晓岚_项目复盘"
+                },
+                {
+                  "citation_id": "18106447-11d4-4b47-b89b-efc99ca6fa90",
+                  "chunk_id": "18106447-11d4-4b47-b89b-efc99ca6fa90",
+                  "quote": "面向集团法务、采购与销售团队建设合同审查平台，接入采购合同、销售合同、保密协议等 12 类模板。负责服务端总体方案和审查任务编排，将文件上传、版面解析、条款切分、规则匹配、模型复核与报告生成拆成可恢复任务。设计文档版本、审查批次、规则命中和人工复核数据模型，使用 PostgreSQL 保存事务数据，MinIO 保存原文件与审查报告，Redis 维护幂等键和短期任务状态。为避免长任务阻塞接口，引入消息队列并实现失败重试、超时终止与回调补偿。上线后平均单份合同处理时间由人工 45 分钟降至 8 分钟，审查报告生成成功率连续三个季度保持在 99.3% 以上。",
+                  "quote_start": 0,
+                  "quote_end": 279,
+                  "source_label": "C001_林晓岚_项目复盘"
+                },
+                {
+                  "citation_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+                  "chunk_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+                  "quote": "面向集团法务、采购与销售团队建设合同审查平台，接入采购合同、销售合同、保密协议等 12 类模板。负责服务端总体方案和审查任务编排，将文件上传、版面解析、条款切分、规则匹配、模型复核与报告生成拆成可恢复任务。设计文档版本、审查批次、规则命中和人工复核数据模型，使用 PostgreSQL 保存事务数据，MinIO 保存原文件与审查报告，Redis 维护幂等键和短期任务状态。为避免长任务阻塞接口，引入消息队列并实现失败重试、超时终止与回调补偿。上线后平均单份合同处理时间由人工 45 分钟降至 8 分钟，审查报告生成成功率连续三个季度保持在 99.3% 以上。",
+                  "quote_start": 35,
+                  "quote_end": 314,
+                  "source_label": "C001_林晓岚_项目复盘"
+                }
+              ]
+            }
+          ],
+          "conflicts": [],
+          "missing_information": [],
+          "citations": [
+            {
+              "citation_id": "25bf2eda-2aa0-4487-a361-43b248adb889",
+              "chunk_id": "25bf2eda-2aa0-4487-a361-43b248adb889",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "b031af40-53ad-4665-8252-b94cac4c8e6d",
+              "chunk_id": "b031af40-53ad-4665-8252-b94cac4c8e6d",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "4f23af62-fc50-4f3e-a906-de9535d69571",
+              "chunk_id": "4f23af62-fc50-4f3e-a906-de9535d69571",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "067326bf-fdb6-4af0-8f33-a431c044ac8d",
+              "chunk_id": "067326bf-fdb6-4af0-8f33-a431c044ac8d",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "95713e13-2d19-4f2d-8a36-00e378d5411c",
+              "chunk_id": "95713e13-2d19-4f2d-8a36-00e378d5411c",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "18106447-11d4-4b47-b89b-efc99ca6fa90",
+              "chunk_id": "18106447-11d4-4b47-b89b-efc99ca6fa90",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "1559dbfe-208d-4c32-a9e2-88bf917facb9",
+              "chunk_id": "1559dbfe-208d-4c32-a9e2-88bf917facb9",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+              "chunk_id": "42ee25aa-8582-42cd-b16f-dfb73332ec48",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+              "chunk_id": "332a3181-bcb9-425b-bd05-bf22bb4338b8",
+              "source_label": "C001_林晓岚_项目复盘"
+            },
+            {
+              "citation_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+              "chunk_id": "78516877-0acd-4c15-b06c-6d1d6c67158b",
+              "source_label": "C001_林晓岚_项目复盘"
+            }
+          ]
+        }
+      ],
+      "tool_call_ids": [
+        "f2cfd50a-2787-41cc-9bac-cfdbd937b0c5",
+        "0bd1c587-fd33-49f3-ac8a-5a00aceef750"
+      ],
+      "error_code": null,
+      "error_message": null
+    }
+  ],
+  "validation_issues": [],
+  "required_work_items": 6,
+  "work_item_limit": 24,
+  "status": "branches_ready",
+  "errors": []
+}

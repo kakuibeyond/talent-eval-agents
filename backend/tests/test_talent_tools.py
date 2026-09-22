@@ -323,21 +323,29 @@ def test_circuit_opens_after_consecutive_failures(context):
     assert blocked["meta"]["degraded"] is True
 
 
-def test_timeout_returns_without_waiting_for_slow_operation(context):
+def test_timeout_returns_without_waiting_for_slow_operation(context, caplog):
     executor = ToolExecutor(
         policy=ToolPolicy(max_attempts=1, timeout_seconds=0.01, backoff_seconds=0),
     )
     started = time.monotonic()
 
-    result = executor.execute(
-        "search_candidate_evidence",
-        lambda: time.sleep(0.2),
-        context=context,
-        arguments={},
-    )
+    with caplog.at_level("ERROR", logger="app.talent_tools"):
+        result = executor.execute(
+            "search_candidate_evidence",
+            lambda: time.sleep(0.2),
+            context=context,
+            arguments={},
+        )
 
     assert time.monotonic() - started < 0.1
     assert result["error"]["code"] == "dependency_unavailable"
+    message = caplog.messages[-1]
+    assert "event=tool_call_failed" in message
+    assert "function=ToolExecutor.execute" in message
+    assert "failure_type=timeout" in message
+    assert "tool_name=search_candidate_evidence" in message
+    assert "run_id=run-12" in message
+    assert "error_code=dependency_unavailable" in message
 
 
 def test_timeout_policy_changes_slow_operation_result(context):

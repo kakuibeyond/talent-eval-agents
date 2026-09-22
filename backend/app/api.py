@@ -233,6 +233,20 @@ def create_knowledge_base(payload: KnowledgeBaseInput, db: Session = Depends(get
     return {"id": item.id, "name": item.name, "description": item.description, "permission_scope": item.permission_scope, "file_count": 0}
 
 
+@router.delete("/knowledge-bases/{knowledge_base_id}")
+def delete_knowledge_base(knowledge_base_id: UUID, db: Session = Depends(get_db)):
+    item = db.get(KnowledgeBase, knowledge_base_id)
+    if not item:
+        raise HTTPException(404, "知识库不存在")
+    file_count = db.scalar(select(func.count(Document.id)).where(Document.knowledge_base_id == knowledge_base_id)) or 0
+    if file_count:
+        raise HTTPException(409, f"知识库中还有 {file_count} 份材料，请先删除或迁移材料")
+    db.delete(item)
+    db.commit()
+    logger.info("knowledge_base_deleted knowledge_base_id=%s name=%s", item.id, item.name)
+    return {"id": item.id, "name": item.name, "deleted": True}
+
+
 @router.get("/documents")
 def list_documents(knowledge_base_id: UUID | None = None, db: Session = Depends(get_db)):
     query = select(Document).order_by(Document.created_at.desc())

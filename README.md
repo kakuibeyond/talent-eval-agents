@@ -16,7 +16,7 @@
 
 ## 产品定位
 
-前端是多 Agent 人才评估与推荐系统的统一应用壳层，人才档案模块包含员工花名册和档案资料库。花名册维护结构化员工数据，提供新建员工和每页 10 人分页。档案资料库通过知识库下拉框切换文件集合，文件表按每页 10 条分页，上传后自动排入解析、切片和 Milvus 索引链路，同时支持批量删除材料与关联数据。文件详情展示原文件、解析结果、索引记录、切片预览与基础元数据。档案资料库页面内置证据召回测试，可输入查询并附带候选人、材料类型和权限范围过滤项，直接查看匹配 Chunk、相似度分数和来源材料
+前端是多 Agent 人才评估与推荐系统的统一应用壳层，人才档案模块包含员工花名册和档案资料库。花名册维护结构化员工数据，提供新建员工和每页 10 人分页。档案资料库支持新建知识库、切换知识库、查看文件数量和删除空知识库；非空知识库需要先删除或迁移材料。文件表按每页 10 条分页，上传后自动排入解析、切片和 Milvus 索引链路，同时支持批量删除材料与关联数据。文件详情展示原文件、解析结果、索引记录、切片预览与基础元数据。档案资料库页面内置证据召回测试，可输入查询并附带候选人、材料类型和权限范围过滤项，直接查看匹配 Chunk、相似度分数和来源材料
 
 ## 运行模式
 
@@ -97,6 +97,7 @@ docker compose -p talent-eval-agents-course --profile app up -d --build
 | `POST /api/employees` | 新建结构化员工档案 |
 | `GET /api/knowledge-bases` | 查询档案知识库及文件数量 |
 | `POST /api/knowledge-bases` | 创建档案知识库 |
+| `DELETE /api/knowledge-bases/{id}` | 删除空知识库；存在材料时返回 409，要求先删除或迁移材料 |
 | `GET /api/documents` | 查询知识库文件 |
 | `POST /api/documents` | 上传文件、关联员工与知识库，并自动创建解析任务 |
 | `DELETE /api/documents` | 批量删除文档，同时删除原文件、解析产物、切片和 Milvus 向量 |
@@ -423,6 +424,100 @@ uv run --no-sync pytest -q \
 ```
 
 结果输出为 `24 passed, 1 warning in 1.19s`。后端完整回归结果为 `174 passed, 2 warnings in 8.40s`
+
+## 第 15 课动态评估维度与 Subagent 分发
+
+| 路径 | 用途 |
+|---|---|
+| `backend/app/talent_evaluation_dispatch.py` | 定义动态评估维度、Requirement Evidence、确定性 Branch Worker、任务矩阵与并行分发图 |
+| `backend/app/talent_evaluation_runtime.py` | 装配模型、混合检索、PostgreSQL 原文回表、Evidence Pack 生成器和 Branch Worker，导出 Agent Server 可加载的编译图 |
+| `backend/scripts/verify_talent_evaluation_dispatch.py` | 直接引用运行时模块已注册的 `graph`，传入示例状态与可信 Runtime Context 验证独立分发子图 |
+| `backend/tests/test_talent_evaluation_dispatch.py` | 覆盖权重校验、候选人 × 维度分发、reducer 聚合、可信上下文、工具边界、任务上限与失败隔离 |
+| `backend/tests/test_talent_evaluation_branch_agent_live.py` | 使用真实 Chat Model 验证事实抽取、连续原文引用、Evidence Pack 与 Branch Worker 的完整传递 |
+
+本节接收第 14 课的 `TalentRequest` 与 `QueryPlan`。硬条件决定候选人范围，语义要求和评估偏好用于生成动态评估维度。每个维度包含定义、整数权重、证据要求、0/3/5 分锚点、检索提示和需求来源。模型输出不包含维度标识，程序按照维度列表顺序生成 `dimension_number=1..N`，避免模型生成重复标识。Pydantic 负责字段结构约束，`validate_dimension_plan` 只检查权重合计是否为 100。
+
+候选人与评估维度组成笛卡尔积任务矩阵。LangGraph `Send` 将每个任务发送给独立评估分支，`branch_results` 使用 `operator.add` reducer 聚合结果。验证脚本默认允许 6 个分支并发执行，分支内部再并发处理当前维度的全部 `evidence_requirements`。每条要求组合 `retrieval_hints` 后调用 `search_candidate_evidence`，Future 按提交顺序聚合，因而完成顺序不会改变输出顺序。结果保留 Candidate Evidence Pack 2.0 的事实、来源、冲突、缺失信息和引用指针。`get_candidate_profiles` 不再在候选人 × 维度分支中重复调用。
+
+运行真实链路验证：
+
+```bash
+cd backend
+uv run --no-sync python -m scripts.verify_talent_evaluation_dispatch --log-level INFO
+```
+
+运行前需要启动 PostgreSQL、Milvus、MinIO 和 etcd，并配置模型、Embedding 与 Rerank 服务。脚本直接查询真实候选人和证据索引，不创建固定候选人或固定分支结果。`langgraph.json` 以 `talent_evaluation_dispatch` 注册该独立子图，完整主流程接入留到后续课程。
+
+运行本节与前置课程的定向测试：
+
+```bash
+uv run --no-sync pytest -q \
+  tests/test_evidence_pack.py \
+  tests/test_talent_evaluation_dispatch.py \
+  tests/test_talent_tools.py \
+  tests/test_talent_decision_graph.py \
+  tests/test_talent_request_graph.py
+```
+
+原链路把分支执行状态、事实抽取状态和证据充分性合并成一个 `status`，同时使用 3 秒工具超时包裹包含模型抽取的证据调用，导致真实链路稳定出现全量 `degraded`。当前输出使用顶层 `execution_status` 描述调用是否完成，每条 `RequirementEvidence` 分别保留 `status`、`reason`、`extraction_status`、`facts`、`conflicts`、`missing_information` 和 `citations`。真实并发运行观察到单次证据调用最长耗时 59.13 秒，证据检索工具因此单独使用一次 90 秒超时，避免线程超时后重复发出未终止的模型请求。模型抽取失败不再改写为分支执行失败。
+
+两组可比实测都包含 6 个候选人 × 维度任务项和 12 次要求级模型调用。外层并发为 3 且分支内串行时，总耗时为 164.30 秒，分支阶段约 147.6 秒。外层默认并发改为 6 且分支内并发后，总耗时为 72.53 秒，分支阶段约 57.5 秒，总耗时降低约 55.9%。12 次要求级调用在约 14 毫秒内全部进入执行，分支阶段最终受最慢一次 57.48 秒的模型调用限制。
+
+抽取输入使用 `source_1`、`source_2` 这类短来源编号，返回后由程序恢复真实 `chunk_id`，避免模型把 UUID 缩写为不可验证的前缀。`quote` 只规范化首尾空白，仍必须是对应 Chunk 的连续原文，不使用模糊匹配接受模型改写。失败日志会区分 `unknown_chunk_id`、`blank_quote`、`quote_not_found`、`schema_validation_failed` 和 `model_extraction_failed`，并携带函数、阶段、候选人、要求和 Chunk 编号，不输出履历原文或 Prompt。
+
+DashScope 的 OpenAI 兼容端点对 `json_schema` 约束编译可能返回 `grammar validation or compilation failed`。证据抽取改用 `json_mode`，输入中显式附带 `EvidenceExtraction` 的 JSON Schema，再由 Pydantic 在本地校验结果。原 `BranchAgentFinding` 中“`evidence_refs` 与 `missing_items` 不能同时为空”的全局校验已经删除；抽取失败时允许只保留 citations。第 16 课再按评分状态执行引用和缺失信息的本地完整性校验，该业务规则不是服务端 grammar 错误的原因。
+
+第 16 课从 `facts[].sources[].chunk_id` 构建证据白名单和链接，直接使用 `missing_information`，不再要求上游额外维护 `evidence_refs`、`missing_items` 或独立的 `evidence_items` 输入。
+
+真实模型证据抽取测试命令：
+
+```bash
+RUN_LIVE_MODEL_TESTS=1 uv run --no-sync pytest \
+  tests/test_talent_evaluation_branch_agent_live.py -q -s
+```
+
+该测试会把用例中的测试证据发送到项目配置的外部模型端点，应在已获得数据发送授权的环境中执行。不设置 `RUN_LIVE_MODEL_TESTS=1` 时默认跳过，避免普通回归依赖外部模型网络。
+
+## 第 16 课证据评估与报告合成
+
+| 路径 | 用途 |
+|---|---|
+| `backend/app/talent_evaluation_report.py` | 定义并发单维度评分、候选人级并发一致性检查、候选人聚合、稳定排序、短引用映射、报告校验与 Markdown 渲染图 |
+| `backend/app/talent_evaluation_runtime.py` | 使用项目 Chat Model 装配第 16 课评分、一致性检查和报告模型，导出正式 `report_graph` |
+| `backend/langgraph.json` | 以 `talent_evaluation_report` 注册第 16 课正式图 |
+| `backend/scripts/verify_talent_evaluation_report.py` | 读取第 15 课真实分发结果，复用 `report_graph` 输出节点日志、排名、证据状态和 Markdown 报告 |
+| `backend/tests/test_talent_evaluation_report.py` | 覆盖缺失不计 0 分、引用白名单、短引用恢复、并发上限与稳定顺序、一致性风险、得分聚合、运行时装配、图注册与报告渲染 |
+
+第 16 课接收第 15 课的评估维度和 `branch_results`，程序从 Requirement Evidence 的事实来源生成内部 `evidence_items`。单维度模型评分输出 `sufficient`、`partial`、`missing` 或 `conflicting`，分支执行失败由程序转为 `failed`。`missing`、`conflicting` 和 `failed` 的分数保持为 `null`，不将材料缺失折算为 0 分
+
+`score_dimensions` 默认最多并发执行 12 个候选人 × 维度评分任务，并使用保持输入顺序的聚合方式写回 State。`review_consistency` 按候选人隔离输入后默认最多并发检查 12 名候选人。聚合排名依赖一致性结果，报告依赖完整排名，最终校验依赖报告草稿，这三段保持串行以维护数据依赖
+
+候选人聚合由程序按维度权重计算已确认得分、理论上限和可评分覆盖率。排名依次使用已确认得分、可评分覆盖率和 `candidate_id`，模型不参与排名。跨维度一致性问题作为风险保留，降低置信度，但不自动改写已核验分数
+
+程序为每条证据分配稳定的 `E1`、`E2` 短编号，模型只读写短编号，State 同时保留短编号与完整 `chunk_id` 的映射。评分、一致性检查和报告模型返回后，程序先将短编号恢复为完整 Chunk ID，再执行引用白名单和候选人归属校验。报告正文显示短编号，链接仍由完整 Chunk ID、原文偏移和可信 `citation_url` 渲染，模型输入不包含链接
+
+`talent_evaluation_runtime.py` 通过项目配置的 Chat Model 装配 `dimension_scorer`、`consistency_reviewer` 和 `report_writer`，并导出 `report_graph`。验证脚本只读取 `backend/samples/lesson16/talent_evaluation_dispatch_result_20260921_205347.json` 中的 `dimensions` 与 `branch_results`，固定维度、固定评分和固定报告均已删除
+
+运行独立验证：
+
+```bash
+cd backend
+uv run --no-sync python -m scripts.verify_talent_evaluation_report \
+  --input samples/lesson16/talent_evaluation_dispatch_result_20260921_205347.json
+```
+
+运行第 16 课与前置课程定向测试：
+
+```bash
+uv run --no-sync pytest -q \
+  tests/test_talent_evaluation_report.py \
+  tests/test_talent_evaluation_dispatch.py \
+  tests/test_talent_tools.py \
+  tests/test_talent_decision_graph.py \
+  tests/test_talent_request_graph.py
+```
+
+结果输出为 `64 passed, 2 warnings in 2.32s`，后端完整回归为 `218 passed, 1 skipped, 2 warnings in 89.75s`
 
 ## Chunk 模块
 

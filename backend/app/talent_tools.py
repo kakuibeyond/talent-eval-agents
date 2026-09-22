@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
@@ -15,6 +16,8 @@ from sqlalchemy.orm import Session
 
 from app.models import EmployeeProfile, JobDescription, ToolCallAudit
 from app.query_plan import FilterCondition, QueryPlan, TaskType, select_candidate_ids
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -111,7 +114,20 @@ class ToolExecutor:
         call_id = str(uuid4())
         started = time.monotonic()
         policy = self.tool_policies.get(name, self.policy)
+        logger.info(
+            "event=tool_call_started function=ToolExecutor.execute "
+            "tool_name=%s call_id=%s run_id=%s actor_id=%s "
+            "argument_keys=%s max_attempts=%s timeout_seconds=%s",
+            name, call_id, context.run_id, context.actor_id,
+            sorted(arguments), policy.max_attempts, policy.timeout_seconds,
+        )
         if not self.circuit_breaker.allow(name):
+            logger.error(
+                "event=tool_call_failed function=ToolExecutor.execute "
+                "failure_type=circuit_open tool_name=%s call_id=%s run_id=%s "
+                "error_code=circuit_open argument_keys=%s",
+                name, call_id, context.run_id, sorted(arguments),
+            )
             return self._finish(
                 name, call_id, context, arguments, started, 0, "blocked",
                 error={"code": "circuit_open", "message": "依赖服务暂时不可用", "retryable": True},
@@ -125,22 +141,61 @@ class ToolExecutor:
                 future = pool.submit(operation)
                 data = future.result(timeout=policy.timeout_seconds)
                 self.circuit_breaker.succeed(name)
+                logger.info(
+                    "event=tool_call_completed function=ToolExecutor.execute "
+                    "tool_name=%s call_id=%s run_id=%s attempts=%s duration_ms=%s",
+                    name, call_id, context.run_id, attempt,
+                    round((time.monotonic() - started) * 1000, 2),
+                )
                 return self._finish(name, call_id, context, arguments, started, attempt, "succeeded", data=data)
             except (TransientToolError, FutureTimeoutError) as exc:
                 last_error = exc
+                if attempt < policy.max_attempts:
+                    logger.warning(
+                        "event=tool_call_retry function=ToolExecutor.execute "
+                        "failure_type=%s tool_name=%s call_id=%s run_id=%s "
+                        "attempt=%s max_attempts=%s",
+                        "timeout" if isinstance(exc, FutureTimeoutError) else "transient",
+                        name, call_id, context.run_id, attempt, policy.max_attempts,
+                    )
                 if attempt < policy.max_attempts and policy.backoff_seconds:
                     time.sleep(policy.backoff_seconds * (2 ** (attempt - 1)))
             except (ValueError, PermissionError) as exc:
                 code = "permission_denied" if isinstance(exc, PermissionError) else "invalid_argument"
+                logger.error(
+                    "event=tool_call_failed function=ToolExecutor.execute "
+                    "failure_type=%s tool_name=%s call_id=%s run_id=%s "
+                    "attempt=%s error_code=%s argument_keys=%s",
+                    type(exc).__name__, name, call_id, context.run_id,
+                    attempt, code, sorted(arguments),
+                )
                 return self._finish(
                     name, call_id, context, arguments, started, attempt, "failed",
                     error={"code": code, "message": str(exc), "retryable": False},
                 )
+            except Exception as exc:
+                logger.exception(
+                    "event=tool_call_crashed function=ToolExecutor.execute "
+                    "failure_type=%s tool_name=%s call_id=%s run_id=%s "
+                    "attempt=%s argument_keys=%s",
+                    type(exc).__name__, name, call_id, context.run_id,
+                    attempt, sorted(arguments),
+                )
+                raise
             finally:
                 pool.shutdown(wait=False, cancel_futures=True)
 
         self.circuit_breaker.fail(name)
         message = "依赖服务调用超时" if isinstance(last_error, FutureTimeoutError) else "依赖服务暂时不可用"
+        logger.error(
+            "event=tool_call_failed function=ToolExecutor.execute "
+            "failure_type=%s tool_name=%s call_id=%s run_id=%s "
+            "attempts=%s error_code=dependency_unavailable argument_keys=%s "
+            "duration_ms=%s",
+            "timeout" if isinstance(last_error, FutureTimeoutError) else "transient",
+            name, call_id, context.run_id, policy.max_attempts,
+            sorted(arguments), round((time.monotonic() - started) * 1000, 2),
+        )
         return self._finish(
             name, call_id, context, arguments, started, policy.max_attempts, "failed",
             error={"code": "dependency_unavailable", "message": message, "retryable": True},
@@ -281,6 +336,12 @@ class TalentToolService:
     def search_candidate_evidence(
         self, query: str, candidate_ids: list[str], *, context: TalentToolContext,
     ) -> dict[str, Any]:
+        logger.info(
+            "event=talent_evidence_search_started "
+            "function=TalentToolService.search_candidate_evidence "
+            "run_id=%s candidate_ids=%s query_chars=%s permission_scope_count=%s",
+            context.run_id, candidate_ids, len(query), len(context.permission_scopes),
+        )
         self._check_context(context)
         if self.evidence_provider is None:
             raise TransientToolError("evidence_provider_not_configured")
@@ -294,6 +355,13 @@ class TalentToolService:
         for pack in result.get("evidence_packs", []):
             if pack.get("schema_version") != "2.0":
                 raise ValueError("不支持的证据协议版本")
+        logger.info(
+            "event=talent_evidence_search_completed "
+            "function=TalentToolService.search_candidate_evidence "
+            "run_id=%s candidate_ids=%s chunk_count=%s evidence_pack_count=%s",
+            context.run_id, candidate_ids, len(result.get("chunks", [])),
+            len(result.get("evidence_packs", [])),
+        )
         return result
 
 

@@ -1,7 +1,9 @@
 {
   "dependencies": ["."],
   "graphs": {
-    "talent_request": "./app/talent_request_graph.py:graph"
+    "talent_request": "./app/talent_request_graph.py:graph",
+    "talent_evaluation_dispatch": "./app/talent_evaluation_runtime.py:graph",
+    "talent_evaluation_report": "./app/talent_evaluation_runtime.py:report_graph"
   },
   "env": "../.env",
   "python_version": "3.12"

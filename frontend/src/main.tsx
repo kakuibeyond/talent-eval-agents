@@ -535,6 +535,7 @@ function App() {
   const [detailTab, setDetailTab] = useState<"original" | "parsed" | "chunks" | "meta">("original");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [employeeOpen, setEmployeeOpen] = useState(false);
+  const [knowledgeBaseOpen, setKnowledgeBaseOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [rosterPage, setRosterPage] = useState(1);
@@ -543,16 +544,19 @@ function App() {
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
   const [pipelineFilter, setPipelineFilter] = useState("");
 
-  async function load() {
-    const [employeeRows, kbRows, documentRows] = await Promise.all([
+  async function load(preferredKnowledgeBaseId = kb) {
+    const [employeeRows, kbRows] = await Promise.all([
       json(`${API}/employees`),
       json(`${API}/knowledge-bases`),
-      json(`${API}/documents${kb ? `?knowledge_base_id=${kb}` : ""}`),
     ]);
+    const activeKnowledgeBaseId = kbRows.some((item: KB) => item.id === preferredKnowledgeBaseId)
+      ? preferredKnowledgeBaseId
+      : kbRows[0]?.id || "";
+    const documentRows = await json(`${API}/documents${activeKnowledgeBaseId ? `?knowledge_base_id=${activeKnowledgeBaseId}` : ""}`);
     setEmployees(employeeRows);
     setKbs(kbRows);
     setDocs(documentRows);
-    if (!kb && kbRows[0]) setKb(kbRows[0].id);
+    setKb(activeKnowledgeBaseId);
   }
 
   async function openDocument(id: string) {
@@ -621,6 +625,41 @@ function App() {
     }
   }
 
+  async function createKnowledgeBase(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      const values = Object.fromEntries(new FormData(event.currentTarget));
+      const created = await json(`${API}/knowledge-bases`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      setKb(created.id);
+      setKnowledgeBaseOpen(false);
+      await load(created.id);
+      setNotice("知识库已创建");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteKnowledgeBase(item: KB) {
+    if (item.file_count > 0) {
+      setNotice(`请先删除或迁移知识库中的 ${item.file_count} 份材料`);
+      return;
+    }
+    if (!window.confirm(`确认删除知识库“${item.name}”吗？`)) return;
+    setBusy(true);
+    try {
+      await json(`${API}/knowledge-bases/${item.id}`, { method: "DELETE" });
+      await load(kb === item.id ? "" : kb);
+      setNotice("知识库已删除");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function upload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -683,15 +722,6 @@ function App() {
   return (
     <div className={`app${sidebarCollapsed ? " sidebarCollapsed" : ""}`}>
       <aside className="side">
-        <button
-          type="button"
-          className="sideToggle"
-          onClick={() => setSidebarCollapsed((value) => !value)}
-          aria-label={sidebarCollapsed ? "展开导航栏" : "收起导航栏"}
-          aria-expanded={!sidebarCollapsed}
-        >
-          {sidebarCollapsed ? <ChevronRight /> : <ChevronLeft />}
-        </button>
         <div className="brand">
           <img src="/talentos-favicon.png" alt="TalentOS" />
           <div>
@@ -724,6 +754,15 @@ function App() {
           </div>
           <small>服务正常 · V1.0</small>
         </div>
+        <button
+          type="button"
+          className="sideToggle"
+          onClick={() => setSidebarCollapsed((value) => !value)}
+          aria-label={sidebarCollapsed ? "展开导航栏" : "收起导航栏"}
+          aria-expanded={!sidebarCollapsed}
+        >
+          {sidebarCollapsed ? <ChevronRight /> : <ChevronLeft />}
+        </button>
       </aside>
       <main>
         <header>
@@ -853,16 +892,61 @@ function App() {
                   </div>
                 </div>
                 <div className="actions">
+                  <button className="ghost" onClick={() => setKnowledgeBaseOpen(true)}>
+                    <Plus />
+                    新建知识库
+                  </button>
                   <button className="ghost danger" onClick={deleteSelectedDocuments} disabled={busy || selectedDocs.length === 0}>
                     <Trash2 />
                     删除已选 {selectedDocs.length > 0 ? `(${selectedDocs.length})` : ""}
                   </button>
-                  <button className="primary" onClick={() => setUploadOpen(true)}>
+                  <button className="primary" onClick={() => setUploadOpen(true)} disabled={!kb}>
                     <Upload />
                     上传材料
                   </button>
                 </div>
               </div>
+
+              <section className="knowledgeBaseManager">
+                <div className="managerHead">
+                  <div>
+                    <h2>知识库管理</h2>
+                    <p>共 {kbs.length} 个知识库，删除前需要先清空其中的材料</p>
+                  </div>
+                </div>
+                {kbs.length === 0 ? (
+                  <div className="empty compact">暂无知识库，先新建知识库再上传材料</div>
+                ) : (
+                  <div className="knowledgeBaseGrid">
+                    {kbs.map((item) => (
+                      <article className={`knowledgeBaseCard ${kb === item.id ? "active" : ""}`} key={item.id}>
+                        <button className="knowledgeBaseMain" onClick={() => {
+                          setKb(item.id);
+                          setDocPage(1);
+                        }}>
+                          <BookOpen />
+                          <span>
+                            <b>{item.name}</b>
+                            <small>{item.description || "暂无描述"}</small>
+                          </span>
+                        </button>
+                        <div className="knowledgeBaseMeta">
+                          <span>{item.file_count} 份材料</span>
+                          <span>{item.permission_scope === "hr_private" ? "HR 专属" : item.permission_scope === "department" ? "部门可见" : "公司内部"}</span>
+                          <button
+                            className="iconDanger"
+                            title={item.file_count > 0 ? "请先清空知识库中的材料" : "删除知识库"}
+                            disabled={busy || item.file_count > 0}
+                            onClick={() => void deleteKnowledgeBase(item)}
+                          >
+                            <Trash2 />
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
 
               <RecallLab employees={employees} onOpenDocument={(id) => void openDocument(id)} />
 
@@ -1006,6 +1090,37 @@ function App() {
             </div>
             <button className="primary" disabled={busy}>
               保存员工
+            </button>
+          </form>
+        </div>
+      )}
+
+      {knowledgeBaseOpen && (
+        <div className="overlay">
+          <form className="dialog knowledgeBaseDialog" onSubmit={createKnowledgeBase}>
+            <button type="button" className="close" onClick={() => setKnowledgeBaseOpen(false)}>
+              <X />
+            </button>
+            <h2>新建知识库</h2>
+            <p className="dialogHint">知识库用于组织不同范围的档案材料，创建后可直接上传文件。</p>
+            <label>
+              知识库名称
+              <input name="name" placeholder="例如：研发中心人才档案" required autoFocus />
+            </label>
+            <label>
+              知识库描述
+              <textarea name="description" placeholder="说明该知识库收录的材料范围" rows={3} />
+            </label>
+            <label>
+              权限范围
+              <select name="permission_scope" defaultValue="hr_private">
+                <option value="hr_private">HR 专属</option>
+                <option value="department">部门可见</option>
+                <option value="internal">公司内部</option>
+              </select>
+            </label>
+            <button className="primary" disabled={busy}>
+              创建知识库
             </button>
           </form>
         </div>

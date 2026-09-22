@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app import api
 from app.api import EvidenceSearchInput
-from app.models import Base, Document, DocumentVersion, EmployeeProfile, EvidenceIndexJob, FileObject, IndexStatus
+from app.models import Base, Document, DocumentVersion, EmployeeProfile, EvidenceIndexJob, FileObject, IndexStatus, KnowledgeBase
 
 
 class FakeRedis:
@@ -151,6 +151,43 @@ def test_retry_index_job_requires_failed_status():
 
     with pytest.raises(api.HTTPException, match="只能重试失败的索引任务"):
         api.retry_index_job(job_id, db=fake_db)
+
+
+def test_delete_knowledge_base_rejects_non_empty_library():
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    session = Session(engine)
+    knowledge_base = KnowledgeBase(name="员工档案")
+    session.add(knowledge_base)
+    session.flush()
+    session.add(
+        Document(
+            candidate_id="C001",
+            knowledge_base_id=knowledge_base.id,
+            tenant_id="course-demo",
+            title="林晓岚简历",
+            document_type="resume",
+            permission_scope="hr_private",
+        )
+    )
+    session.commit()
+
+    with pytest.raises(api.HTTPException, match="请先删除或迁移材料"):
+        api.delete_knowledge_base(knowledge_base.id, db=session)
+
+
+def test_delete_empty_knowledge_base():
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    session = Session(engine)
+    knowledge_base = KnowledgeBase(name="待删除知识库")
+    session.add(knowledge_base)
+    session.commit()
+
+    result = api.delete_knowledge_base(knowledge_base.id, db=session)
+
+    assert result == {"id": knowledge_base.id, "name": "待删除知识库", "deleted": True}
+    assert session.get(KnowledgeBase, knowledge_base.id) is None
 
 
 def test_search_evidence_returns_document_and_candidate_context(monkeypatch):
